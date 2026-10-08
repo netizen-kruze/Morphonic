@@ -119,6 +119,15 @@ not check: no release has been published yet" with a note in `error.log`;
 once published, the same exe reported "You have the latest version (1.0.0)"
 and `last_boot.log` got "update check: 1.0.0 is the latest".
 
+## README screenshot
+
+`docs/screenshot.png` was retaken from the published 1.0.0 exe through the
+DevTools hook: the Voice screen with the sample voice running on the default
+devices (CPU, 250 ms blocks), the "Converting" status with its lag and
+pass-time readout, the "keeping up" pace chip, and the toasts cleared so
+nothing covers the layout. The earlier image showed the idle screen behind
+three first-run toasts and the pre-fix tray glyph.
+
 ## What the walkthrough exercised
 
 Every check clicks the real buttons and reads the real page, the data
