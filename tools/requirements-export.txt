@@ -1,0 +1,13 @@
+# Python packages for tools/morphonic_export.py (the .pth -> ONNX converter).
+# The app itself does not use Python. CPU-only PyTorch is enough:
+#   python -m venv .venv && .venv/bin/pip install -r tools/requirements-export.txt
+# On Windows: py -m venv .venv && .venv\Scripts\pip install -r tools\requirements-export.txt
+# PyTorch's CPU wheels come from its own index:
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.4
+onnx>=1.16
+onnxruntime>=1.18
+numpy>=1.26
+# Only for "morphonic_export.py contentvec" (the encoder export):
+transformers>=4.40
+safetensors>=0.4

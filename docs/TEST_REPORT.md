@@ -1,0 +1,181 @@
+# Test report — 1.0.0, Windows 11, 2026-10-08
+
+Machine: AMD Ryzen 7 9800X3D, 61 GB RAM, NVIDIA GeForce RTX 5080 (16 GB),
+Windows 11 Pro 25H2 (26200.9457), .NET 9.0.18, WebView2 present.
+Artifacts tested: `releases/Morphonic-1.0.0-win-x64.zip` (the published
+`publish\Morphonic.exe`), the offline variants, and
+`releases/Morphonic-1.0.0-linux-x64` in a Fedora 44 WSL distribution (see
+the Fedora section; bare-metal Linux is under "Not covered").
+
+## Summary
+
+| Layer | How | Result |
+|---|---|---|
+| Unit tests (`dotnet test`) | DSP vs Python reference, ONNX stages on the assembled models, checkpoint reader, model assembly reproduces the pinned hashes byte for byte, zip and streamed import, settings, sentinel, device parsing | 48 / 48 pass |
+| Release smoke (`tools/smoke.ps1 -Models`) | published exe, throwaway data folder, voice on the default devices | 10 / 10 pass, 0 underruns |
+| First-run download (`--fetch-models`, and the UI cards) | real downloads from Hugging Face, in-app assembly, pinned hashes | all three files verified; 812 MB in about 30 s |
+| UI walkthrough (`tools/ui_walkthrough.py --phase all`) | the real window driven over WebView2's DevTools port: 90 checks across the checklist's sections A–F | 90 / 90 pass after the fixes below (the last run before the final fix was 89 / 90) |
+| Offline conversion (`--convert`) | a recording through the live pipeline | output pitch follows input (log-f0 correlation 0.94; +12 st gives ratio 2.006) |
+| Speed check (`--bench`) | the bundled 14 s clip | CPU 120 ms per 250 ms block (load 0.48); DirectML 22 ms (load 0.09) |
+
+## Re-verified after the rename to Morphonic
+
+The project was renamed late on the same day (code, data folder, registry
+key, mutex, virtual-microphone names, metadata keys, embedded templates
+and their pinned hashes). After the rename: unit tests 48 / 48, smoke test
+10 / 10, and the first-run, voices and settings walkthrough phases 52 / 53
+on the published `Morphonic.exe`. The one miss ("the chosen voice
+survives" an update) is an artifact of running the settings phase right
+after the voices phase, which ends with no voice chosen; the full run above
+covers that check.
+
+## Offline build
+
+`build.ps1 -Offline` produced `Morphonic-1.0.0-win-x64-offline.zip` (672 MB
+zipped, 893 MB exe) and `Morphonic-1.0.0-linux-x64-offline` (856 MB), each
+packing the three verified model files behind the binary. On the Windows
+offline exe: the first-run walkthrough phase passed 20 / 20 with set-up
+finishing in one second from the included files ("included in this build",
+no download, Unpack buttons), and the smoke test passed 10 / 10 with the
+voice running on the real devices. Unit tests: 49 / 49 with the new
+payload test.
+
+## Fedora 44 (WSL 2 + WSLg, RTX 5080 through /dev/dxg)
+
+The Linux binary (`Morphonic-1.0.0-linux-x64`) ran in a Fedora 44 WSL
+distribution with WSLg, as the user "tester", after `dnf install gtk3
+libnotify webkit2gtk4.1 pulseaudio-utils pipewire-utils`:
+
+| Check | Result |
+|---|---|
+| `--help`, `--fetch-models` (files present: verify only), `--convert` | ok; verify 3 / 3 |
+| Speed check, CPU | 140 ms per 250 ms block (load 0.56), usable |
+| Speed check, CUDA (after `--install-gpu`, 1.9 GB) | 35 ms per 250 ms block (load 0.14), fast; "loaded the bundled CUDA 12 runtime" |
+| `tools/smoke.sh` (WebKitGTK window, voice on the default devices) | 10 / 10 pass, 0 underruns |
+| Live session, virtual microphone on | `morphonic_voice` sink and `morphonic_mic` source appear while running and are removed on exit; output routed to the sink |
+| 45 s live session, CPU | 164 passes, 0 underruns, 0 ms skipped |
+| 20 s live session, CUDA, output to the virtual microphone | 50 passes, avg 39 ms, 0 underruns, 0 ms skipped |
+| SIGTERM from a terminal | clean exit with the session summary |
+| Second instance | exits with "already running" (instance.lock) |
+| `--install` / `--uninstall` | desktop entry, icon and app copy created and removed |
+| Corrupt `settings.json` | restored from `settings.json.bak` |
+
+WSL has a PipeWire daemon but no PipeWire audio nodes, so capture and
+playback fell back to `parec`/`pacat` against WSLg's PulseAudio, which is
+the path a PulseAudio-only desktop would take. At session start on WSL the
+engine dropped about four seconds of backlog once (the RDP source hands
+over a burst of buffered audio) and ran clean afterwards.
+
+Two Linux bugs found and fixed here:
+
+- **CUDA failed on the pitch model**: the pack omitted cuDNN's RNN
+  library (`libcudnn_adv.so.9`), which ONNX Runtime needs for the GRU
+  layers in RMVPE (`CUDNN_STATUS_NOT_SUPPORTED_SUBLIBRARY_UNAVAILABLE`).
+  It is now part of the pack; the CUDA speed check above is from the fixed
+  build.
+- The rail's "✕ quits" note rendered a missing-glyph box with Fedora's
+  default fonts; it now uses "×".
+
+## Final rebuild (release audit)
+
+A pre-release audit added an **Open folder** button beside the data folder
+path in Settings → About, so bug reporters can reach `error.log` and
+`last_boot.log` in one click (the handler opens only the app's own data
+folder; the page cannot supply a path). All four release files were rebuilt
+afterwards: unit tests 49 / 49, the Windows smoke test 10 / 10 on the
+rebuilt exe, and a DevTools-driven check that the button is present in the
+shipped page and opens an Explorer window on the data folder with nothing
+in `error.log`. The audit also confirmed: no update check or network call
+the user did not trigger (new versions ship as a fresh download), the exe's
+version resource names only Morphonic, the old project name appears nowhere
+in the tree or the binaries, and every network host in the code is one of
+Hugging Face, NuGet, PyPI or the WebView2 download page.
+
+## Update check
+
+Settings → About gained **Check for updates**: one request to GitHub's
+latest-release endpoint for the project's repository, made only on the
+button press, answered in the row; **Open download page** opens the release
+in the browser (github.com joined the link allow-list). The app never
+downloads or replaces itself. Unit tests cover the reading of the release
+document (newer / equal / older tags, with and without the `v` prefix, the
+plain asset for the platform chosen over the offline one, malformed
+documents refused, non-GitHub links dropped): 54 / 54. A DevTools-driven
+run against a local fake feed (`--update-feed`, a test hook) passed
+12 / 12: no request before the press, a newer release announced with the
+Windows file and the notes, an equal release reported as latest, a dead
+feed reported as "Could not check" with a note (not an exception) in
+`error.log`, and the button usable again afterwards. One bug fixed on the
+way: the first build sent the answer with capitalised field names the page
+did not read. `build.ps1` / `build.sh` now also write
+`releases/SHA256SUMS.txt` for the release page.
+
+## What the walkthrough exercised
+
+Every check clicks the real buttons and reads the real page, the data
+folder and `last_boot.log`:
+
+- **A. First run and models** — first-run cards, the set-up download with
+  its Assembling phase, the sample voice, Verify, Delete and re-download,
+  Cancel midway (no partial left), a corrupted file named by Verify and
+  passing again after repair, a deleted required component bringing
+  first-run back, the GPU pack download, the restart from its toast, and
+  DirectML active afterwards.
+- **B. Voice core** — Start, the "keeping up" chip, pitch changes without a
+  restart, block-size change restarting exactly once, gate and loudness
+  saved, Stop writing the session summary with its underrun count, the
+  speed check from Settings and `bench.log`.
+- **C. Voices** — three `.pth` files (a v2 voice, a v1 voice, a no-pitch
+  voice): the v2 one converts in-app in 1 s with no Python, the other two
+  are refused with the right message; drag-and-drop streaming of a file
+  into the library and refusal of a non-voice file; Find voices (Hugging
+  Face search, file listing, a verified download); a raw training
+  generator refused with a reason; Use, Start with the converted voice,
+  delete refused while running and allowed after Stop; no-voice state.
+- **E. Lifecycle** — a second instance exits, Close hides to the tray with
+  the voice still running, the unfinished-boot sentinel (toast, error.log,
+  `--auto-start` ignored, normal on the next launch), corrupt
+  `settings.json` recovered from the backup.
+- **F. Settings and update** — Recommended defaults, About documents,
+  version, the fallback-converter button, acceleration change offering a
+  restart, and the published exe on an existing data folder keeping
+  components and the chosen voice.
+
+Screenshots of each screen from the run are in the walkthrough's output
+folder (`--out`).
+
+## Bugs found by this testing, all fixed
+
+1. **Restart lost the command line.** The restart offered after installing
+   the GPU pack started the new process without the original arguments, so
+   a `--data-dir` (and the test hooks) were dropped. The new process now
+   inherits them.
+2. **Blank window when another Photino app runs.** Photino's default
+   WebView2 profile folder is shared by every Photino app on the machine,
+   and WebView2 refuses to start in a folder already open with different
+   browser arguments. The profile now lives in the app's own data folder.
+3. **Start stayed disabled after choosing a voice.** The page read the chosen
+   voice from the devices payload, which was not re-sent on Use, after a
+   conversion, or after deleting the active voice. All three now re-send it.
+4. **First-run did not return after deleting a required component**
+   (same cause: the readiness flag travels in that payload). Fixed the same
+   way.
+5. **Conversion toast printed a full temp path and a hash**; long toasts
+   could not wrap. Both fixed.
+6. **A flaky unit test** (two test classes pointed the data folder at their
+   own temporary directories while xunit ran them in parallel). The suite
+   now runs its classes serially; it passed three consecutive runs.
+
+## Not covered here
+
+- **Linux on real hardware:** Fedora 44 was tested in WSL 2 with WSLg
+  (see the Fedora section), where audio goes through WSLg's PulseAudio
+  bridge. PipeWire devices on a bare-metal Fedora desktop, a real
+  microphone, and GNOME/KDE window management have not been exercised.
+- **Listening judgments** (intelligibility, clicks at block boundaries,
+  gate and loudness by ear, VB-CABLE into a real game or call): the
+  walkthrough verifies that sessions run clean (0 underruns, 0 skipped)
+  but cannot listen. Section B/D of the checklist, by a person.
+- **Network failure mid-download** and **unplugging the microphone** were
+  not simulated.
+- **A machine without WebView2** (the installer prompt) was not available.

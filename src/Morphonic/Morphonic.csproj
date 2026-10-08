@@ -1,0 +1,111 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- One project for both desktops: plain net9.0, published for win-x64
+         (WinExe: no console window) and linux-x64 (Exe). The window is
+         Photino (WebView2 on Windows, WebKitGTK on Linux); audio is WASAPI
+         through NAudio on Windows and PipeWire child processes on Linux;
+         inference is ONNX Runtime on both. -->
+    <TargetFramework>net9.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <OutputType Condition="$(RuntimeIdentifier.StartsWith('win')) Or ('$(RuntimeIdentifier)' == '' And $([MSBuild]::IsOSPlatform('Windows')))">WinExe</OutputType>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <AssemblyName>Morphonic</AssemblyName>
+    <RootNamespace>Morphonic</RootNamespace>
+    <Version>1.0.0</Version>
+    <Product>Morphonic</Product>
+    <AssemblyTitle>Morphonic — real-time RVC voice changer</AssemblyTitle>
+    <Company>Morphonic</Company>
+    <Copyright>© 2026 Morphonic</Copyright>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Everything here parses and formats with the invariant culture; a
+         minimal Linux install without libicu must still start. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- The embedded PDB ships in the release binary; without this mapping
+         its document table (and stack traces in error.log) would carry the
+         build machine's full source paths. Release-only so Debug builds
+         keep real paths for breakpoints. -->
+    <PathMap Condition="'$(Configuration)' == 'Release'">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../'))=./</PathMap>
+    <!-- Single source of truth for the inference runtime version: the
+         package reference, the GPU packs (OnnxHost/GpuPack) and the About
+         page all read it. The GPU packs download the matching native
+         builds, so this must stay on a version both DirectML and the Linux
+         CUDA package ship for. -->
+    <OnnxRuntimeVersion>1.24.4</OnnxRuntimeVersion>
+    <!-- The WASAPI binding is Windows COM interop that is only ever called
+         on Windows; the analyzer cannot see the OperatingSystem guards. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="$(OnnxRuntimeVersion)" />
+    <PackageReference Include="NAudio.Core" Version="2.2.1" />
+    <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Photino.NET" Version="4.0.16" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The UI ships inside the assembly, so a single-file publish leaves
+         nothing beside the binary. -->
+    <EmbeddedResource Include="wwwroot/**">
+      <LogicalName>ui/wwwroot/%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="app.ico">
+      <LogicalName>ui/app.ico</LogicalName>
+    </EmbeddedResource>
+    <!-- GTK wants a PNG for the window icon (the ICO loader is an optional
+         gdk-pixbuf module on Fedora). -->
+    <EmbeddedResource Include="app.png">
+      <LogicalName>ui/app.png</LogicalName>
+    </EmbeddedResource>
+    <!-- The scalable icon the Linux self-install writes into the hicolor theme. -->
+    <EmbeddedResource Include="Install/morphonic.svg">
+      <LogicalName>install/morphonic.svg</LogicalName>
+    </EmbeddedResource>
+    <!-- The speed check's 14 s speech clip (a synthetic voice reading known
+         text), converted by the active voice to time this machine. -->
+    <EmbeddedResource Include="Bench/fixture.wav">
+      <LogicalName>bench/fixture.wav</LogicalName>
+    </EmbeddedResource>
+    <!-- The license documents render in-app (Settings > About) instead of
+         shipping as loose files. Not under ui/ on purpose: they are read
+         straight from the assembly, never extracted. -->
+    <EmbeddedResource Include="../../README.md">
+      <LogicalName>docs/README.md</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../LICENSE">
+      <LogicalName>docs/LICENSE.txt</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../NOTICE.txt">
+      <LogicalName>docs/NOTICE.txt</LogicalName>
+    </EmbeddedResource>
+    <!-- The .pth -> .onnx converter and the network definitions it needs
+         ride inside the binary and are unpacked into the data folder's
+         tools/ on demand (VoiceLibrary.UnpackTools), so converting a voice
+         never needs a source checkout — only Python with the packages in
+         requirements-export.txt. -->
+    <!-- Weightless ONNX graphs and recipes for the models the app
+         assembles itself from the original checkpoints (ModelAssembler;
+         made by tools/make_templates.py). -->
+    <EmbeddedResource Include="Assets/*.template;Assets/*.recipe.json">
+      <LogicalName>assets/%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../tools/morphonic_export.py">
+      <LogicalName>tools/morphonic_export.py</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../tools/requirements-export.txt">
+      <LogicalName>tools/requirements-export.txt</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../tools/rvc_infer_pack/*.py;../../tools/rvc_infer_pack/NOTICE.txt">
+      <LogicalName>tools/rvc_infer_pack/%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Morphonic.Tests" />
+  </ItemGroup>
+
+</Project>

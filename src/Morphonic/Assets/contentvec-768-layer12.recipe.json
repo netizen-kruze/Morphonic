@@ -1,0 +1,2202 @@
+{
+ "format": "morphonic-model-recipe",
+ "formatVersion": 1,
+ "template": "contentvec-768-layer12.template",
+ "templateSha256": "180c2b14ba6555c917428494b2eadd2bec81b91aebe24e6e8d64d52abca8c726",
+ "source": {
+  "file": "pytorch_model.bin",
+  "sha256": "d8dd400e054ddf4e6be75dab5a2549db748cc99e756a097c496c099f65a4854e",
+  "sizeBytes": 378342945,
+  "stateKey": ""
+ },
+ "export": {
+  "file": "contentvec-768-layer12.onnx",
+  "sha256": "f9c70acaa0a0156555c6269f5a3254f51a95c262dde2ba228b062885df072922"
+ },
+ "tensors": [
+  {
+   "name": "m.feature_extractor.conv_layers.0.conv.weight",
+   "dims": [
+    512,
+    1,
+    10
+   ],
+   "op": "copy",
+   "src": [
+    "feature_extractor.conv_layers.0.conv.weight"
+   ]
+  },
+  {
+   "name": "m.feature_extractor.conv_layers.1.conv.weight",
+   "dims": [
+    512,
+    512,
+    3
+   ],
+   "op": "copy",
+   "src": [
+    "feature_extractor.conv_layers.1.conv.weight"
+   ]
+  },
+  {
+   "name": "m.feature_extractor.conv_layers.2.conv.weight",
+   "dims": [
+    512,
+    512,
+    3
+   ],
+   "op": "copy",
+   "src": [
+    "feature_extractor.conv_layers.2.conv.weight"
+   ]
+  },
+  {
+   "name": "m.feature_extractor.conv_layers.3.conv.weight",
+   "dims": [
+    512,
+    512,
+    3
+   ],
+   "op": "copy",
+   "src": [
+    "feature_extractor.conv_layers.3.conv.weight"
+   ]
+  },
+  {
+   "name": "m.feature_extractor.conv_layers.4.conv.weight",
+   "dims": [
+    512,
+    512,
+    3
+   ],
+   "op": "copy",
+   "src": [
+    "feature_extractor.conv_layers.4.conv.weight"
+   ]
+  },
+  {
+   "name": "m.feature_extractor.conv_layers.5.conv.weight",
+   "dims": [
+    512,
+    512,
+    2
+   ],
+   "op": "copy",
+   "src": [
+    "feature_extractor.conv_layers.5.conv.weight"
+   ]
+  },
+  {
+   "name": "m.feature_extractor.conv_layers.6.conv.weight",
+   "dims": [
+    512,
+    512,
+    2
+   ],
+   "op": "copy",
+   "src": [
+    "feature_extractor.conv_layers.6.conv.weight"
+   ]
+  },
+  {
+   "name": "m.feature_projection.layer_norm.weight",
+   "dims": [
+    512
+   ],
+   "op": "copy",
+   "src": [
+    "feature_projection.layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.feature_projection.layer_norm.bias",
+   "dims": [
+    512
+   ],
+   "op": "copy",
+   "src": [
+    "feature_projection.layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.feature_projection.projection.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "feature_projection.projection.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.pos_conv_embed.conv.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.pos_conv_embed.conv.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.0.attention.k_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.0.attention.k_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.0.attention.v_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.0.attention.v_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.0.attention.q_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.0.attention.q_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.0.attention.out_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.0.attention.out_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.0.layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.0.layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.0.layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.0.layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.0.feed_forward.intermediate_dense.bias",
+   "dims": [
+    3072
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.0.feed_forward.intermediate_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.0.feed_forward.output_dense.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.0.feed_forward.output_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.0.final_layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.0.final_layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.0.final_layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.0.final_layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.1.attention.k_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.1.attention.k_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.1.attention.v_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.1.attention.v_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.1.attention.q_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.1.attention.q_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.1.attention.out_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.1.attention.out_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.1.layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.1.layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.1.layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.1.layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.1.feed_forward.intermediate_dense.bias",
+   "dims": [
+    3072
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.1.feed_forward.intermediate_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.1.feed_forward.output_dense.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.1.feed_forward.output_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.1.final_layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.1.final_layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.1.final_layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.1.final_layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.2.attention.k_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.2.attention.k_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.2.attention.v_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.2.attention.v_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.2.attention.q_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.2.attention.q_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.2.attention.out_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.2.attention.out_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.2.layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.2.layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.2.layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.2.layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.2.feed_forward.intermediate_dense.bias",
+   "dims": [
+    3072
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.2.feed_forward.intermediate_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.2.feed_forward.output_dense.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.2.feed_forward.output_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.2.final_layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.2.final_layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.2.final_layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.2.final_layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.3.attention.k_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.3.attention.k_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.3.attention.v_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.3.attention.v_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.3.attention.q_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.3.attention.q_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.3.attention.out_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.3.attention.out_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.3.layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.3.layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.3.layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.3.layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.3.feed_forward.intermediate_dense.bias",
+   "dims": [
+    3072
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.3.feed_forward.intermediate_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.3.feed_forward.output_dense.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.3.feed_forward.output_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.3.final_layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.3.final_layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.3.final_layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.3.final_layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.4.attention.k_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.4.attention.k_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.4.attention.v_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.4.attention.v_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.4.attention.q_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.4.attention.q_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.4.attention.out_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.4.attention.out_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.4.layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.4.layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.4.layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.4.layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.4.feed_forward.intermediate_dense.bias",
+   "dims": [
+    3072
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.4.feed_forward.intermediate_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.4.feed_forward.output_dense.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.4.feed_forward.output_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.4.final_layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.4.final_layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.4.final_layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.4.final_layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.5.attention.k_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.5.attention.k_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.5.attention.v_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.5.attention.v_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.5.attention.q_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.5.attention.q_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.5.attention.out_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.5.attention.out_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.5.layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.5.layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.5.layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.5.layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.5.feed_forward.intermediate_dense.bias",
+   "dims": [
+    3072
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.5.feed_forward.intermediate_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.5.feed_forward.output_dense.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.5.feed_forward.output_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.5.final_layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.5.final_layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.5.final_layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.5.final_layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.6.attention.k_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.6.attention.k_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.6.attention.v_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.6.attention.v_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.6.attention.q_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.6.attention.q_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.6.attention.out_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.6.attention.out_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.6.layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.6.layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.6.layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.6.layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.6.feed_forward.intermediate_dense.bias",
+   "dims": [
+    3072
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.6.feed_forward.intermediate_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.6.feed_forward.output_dense.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.6.feed_forward.output_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.6.final_layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.6.final_layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.6.final_layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.6.final_layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.7.attention.k_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.7.attention.k_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.7.attention.v_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.7.attention.v_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.7.attention.q_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.7.attention.q_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.7.attention.out_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.7.attention.out_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.7.layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.7.layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.7.layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.7.layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.7.feed_forward.intermediate_dense.bias",
+   "dims": [
+    3072
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.7.feed_forward.intermediate_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.7.feed_forward.output_dense.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.7.feed_forward.output_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.7.final_layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.7.final_layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.7.final_layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.7.final_layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.8.attention.k_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.8.attention.k_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.8.attention.v_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.8.attention.v_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.8.attention.q_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.8.attention.q_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.8.attention.out_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.8.attention.out_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.8.layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.8.layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.8.layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.8.layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.8.feed_forward.intermediate_dense.bias",
+   "dims": [
+    3072
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.8.feed_forward.intermediate_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.8.feed_forward.output_dense.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.8.feed_forward.output_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.8.final_layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.8.final_layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.8.final_layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.8.final_layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.9.attention.k_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.9.attention.k_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.9.attention.v_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.9.attention.v_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.9.attention.q_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.9.attention.q_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.9.attention.out_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.9.attention.out_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.9.layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.9.layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.9.layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.9.layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.9.feed_forward.intermediate_dense.bias",
+   "dims": [
+    3072
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.9.feed_forward.intermediate_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.9.feed_forward.output_dense.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.9.feed_forward.output_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.9.final_layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.9.final_layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.9.final_layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.9.final_layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.10.attention.k_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.10.attention.k_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.10.attention.v_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.10.attention.v_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.10.attention.q_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.10.attention.q_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.10.attention.out_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.10.attention.out_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.10.layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.10.layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.10.layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.10.layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.10.feed_forward.intermediate_dense.bias",
+   "dims": [
+    3072
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.10.feed_forward.intermediate_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.10.feed_forward.output_dense.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.10.feed_forward.output_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.10.final_layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.10.final_layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.10.final_layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.10.final_layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.11.attention.k_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.11.attention.k_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.11.attention.v_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.11.attention.v_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.11.attention.q_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.11.attention.q_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.11.attention.out_proj.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.11.attention.out_proj.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.11.layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.11.layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.11.layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.11.layer_norm.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.11.feed_forward.intermediate_dense.bias",
+   "dims": [
+    3072
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.11.feed_forward.intermediate_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.11.feed_forward.output_dense.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.11.feed_forward.output_dense.bias"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.11.final_layer_norm.weight",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.11.final_layer_norm.weight"
+   ]
+  },
+  {
+   "name": "m.encoder.layers.11.final_layer_norm.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "encoder.layers.11.final_layer_norm.bias"
+   ]
+  },
+  {
+   "name": "onnx::Mul_1373",
+   "dims": [
+    512,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "feature_extractor.conv_layers.0.layer_norm.weight"
+   ]
+  },
+  {
+   "name": "onnx::Add_1374",
+   "dims": [
+    512,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "feature_extractor.conv_layers.0.layer_norm.bias"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1375",
+   "dims": [
+    512,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "feature_projection.projection.weight"
+   ]
+  },
+  {
+   "name": "onnx::Conv_1378",
+   "dims": [
+    768,
+    48,
+    128
+   ],
+   "op": "weightnorm",
+   "dim": 2,
+   "src": [
+    "encoder.pos_conv_embed.conv.weight_g",
+    "encoder.pos_conv_embed.conv.weight_v"
+   ],
+   "maxDiffFromExport": 1.1920928955078125e-06
+  },
+  {
+   "name": "onnx::MatMul_1383",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.0.attention.q_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1390",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.0.attention.k_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1391",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.0.attention.v_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1397",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.0.attention.out_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1398",
+   "dims": [
+    768,
+    3072
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.0.feed_forward.intermediate_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1399",
+   "dims": [
+    3072,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.0.feed_forward.output_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1400",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.1.attention.q_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1407",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.1.attention.k_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1408",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.1.attention.v_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1414",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.1.attention.out_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1415",
+   "dims": [
+    768,
+    3072
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.1.feed_forward.intermediate_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1416",
+   "dims": [
+    3072,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.1.feed_forward.output_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1417",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.2.attention.q_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1424",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.2.attention.k_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1425",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.2.attention.v_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1431",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.2.attention.out_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1432",
+   "dims": [
+    768,
+    3072
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.2.feed_forward.intermediate_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1433",
+   "dims": [
+    3072,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.2.feed_forward.output_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1434",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.3.attention.q_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1441",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.3.attention.k_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1442",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.3.attention.v_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1448",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.3.attention.out_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1449",
+   "dims": [
+    768,
+    3072
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.3.feed_forward.intermediate_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1450",
+   "dims": [
+    3072,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.3.feed_forward.output_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1451",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.4.attention.q_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1458",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.4.attention.k_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1459",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.4.attention.v_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1465",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.4.attention.out_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1466",
+   "dims": [
+    768,
+    3072
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.4.feed_forward.intermediate_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1467",
+   "dims": [
+    3072,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.4.feed_forward.output_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1468",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.5.attention.q_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1475",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.5.attention.k_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1476",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.5.attention.v_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1482",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.5.attention.out_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1483",
+   "dims": [
+    768,
+    3072
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.5.feed_forward.intermediate_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1484",
+   "dims": [
+    3072,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.5.feed_forward.output_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1485",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.6.attention.q_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1492",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.6.attention.k_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1493",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.6.attention.v_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1499",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.6.attention.out_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1500",
+   "dims": [
+    768,
+    3072
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.6.feed_forward.intermediate_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1501",
+   "dims": [
+    3072,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.6.feed_forward.output_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1502",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.7.attention.q_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1509",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.7.attention.k_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1510",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.7.attention.v_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1516",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.7.attention.out_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1517",
+   "dims": [
+    768,
+    3072
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.7.feed_forward.intermediate_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1518",
+   "dims": [
+    3072,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.7.feed_forward.output_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1519",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.8.attention.q_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1526",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.8.attention.k_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1527",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.8.attention.v_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1533",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.8.attention.out_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1534",
+   "dims": [
+    768,
+    3072
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.8.feed_forward.intermediate_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1535",
+   "dims": [
+    3072,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.8.feed_forward.output_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1536",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.9.attention.q_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1543",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.9.attention.k_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1544",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.9.attention.v_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1550",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.9.attention.out_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1551",
+   "dims": [
+    768,
+    3072
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.9.feed_forward.intermediate_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1552",
+   "dims": [
+    3072,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.9.feed_forward.output_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1553",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.10.attention.q_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1560",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.10.attention.k_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1561",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.10.attention.v_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1567",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.10.attention.out_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1568",
+   "dims": [
+    768,
+    3072
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.10.feed_forward.intermediate_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1569",
+   "dims": [
+    3072,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.10.feed_forward.output_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1570",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.11.attention.q_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1577",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.11.attention.k_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1578",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.11.attention.v_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1584",
+   "dims": [
+    768,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.11.attention.out_proj.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1585",
+   "dims": [
+    768,
+    3072
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.11.feed_forward.intermediate_dense.weight"
+   ]
+  },
+  {
+   "name": "onnx::MatMul_1586",
+   "dims": [
+    3072,
+    768
+   ],
+   "op": "transpose",
+   "src": [
+    "encoder.layers.11.feed_forward.output_dense.weight"
+   ]
+  }
+ ]
+}

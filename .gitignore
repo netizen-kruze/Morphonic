@@ -1,0 +1,14 @@
+bin/
+obj/
+publish/
+publish-*/
+# release files go to GitHub Releases, never into the repository
+releases/
+*.user
+.vs/
+TestResults/
+*.suo
+# downloaded weights never belong in the repository
+*.pth
+*.onnx
+__pycache__/

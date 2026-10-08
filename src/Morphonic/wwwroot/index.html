@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Morphonic</title>
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<header class="titlebar">
+  <span class="wordmark"><b>Morph</b>onic</span>
+  <span class="statuschip" id="statusChip"><span class="dot off"></span><span id="statusText">starting…</span></span>
+  <span class="pacechip" id="paceChip" hidden><span class="dot"></span><span id="paceText"></span></span>
+</header>
+
+<div class="layout">
+  <nav class="rail" aria-label="Sections">
+    <button class="on" data-view="voice" id="nav-voice"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg><span>Voice</span></button>
+    <button data-view="voices"><svg viewBox="0 0 24 24"><path d="M4 7.5h16M4 12h16M4 16.5h10"/><circle cx="18.5" cy="16.5" r="2"/></svg><span>Voices</span></button>
+    <button data-view="models"><svg viewBox="0 0 24 24"><path d="M12 3v10m0 0l-3.5-3.5M12 13l3.5-3.5"/><path d="M4 17.5c2.7 2 5.3 3 8 3s5.3-1 8-3"/></svg><span>Models</span></button>
+    <button data-view="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 4.5V3m0 18v-1.5M6.7 6.7 5.6 5.6m12.8 12.8-1.1-1.1M4.5 12H3m18 0h-1.5M6.7 17.3l-1.1 1.1M18.4 5.6l-1.1 1.1"/></svg><span>Settings</span></button>
+    <span class="spacer"></span>
+    <div class="tray-note" id="trayNote">× hides to tray;<br>the voice keeps running</div>
+  </nav>
+
+  <!-- Voice (main) -->
+  <section class="view on" id="view-voice">
+    <div class="stage" id="stage">
+      <div class="stage-idle" id="stageIdle">Pick a voice in <b>Voices</b>, choose your microphone and output below, then press <b>Start voice</b>. Your voice is converted on this machine and played to the output you choose — a virtual cable or the <b>Morphonic Voice</b> microphone for games and calls.</div>
+      <div class="stage-live" id="stageLive" hidden>
+        <div class="voicename" id="liveVoice"></div>
+        <div class="livemeta" id="liveMeta"></div>
+        <div class="meters">
+          <div class="meterrow"><span class="mlabel">You</span><div class="meter"><i id="meterIn" style="width:0%"></i></div></div>
+          <div class="meterrow"><span class="mlabel">Voice</span><div class="meter out"><i id="meterOut" style="width:0%"></i></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="listenrow">
+      <span class="pulse" id="pulse" hidden></span>
+      <span id="listenLabel"></span>
+      <span class="gamechip" id="latencyChip" hidden></span>
+    </div>
+    <div class="ctlbar">
+      <button class="bigbtn" id="btnStartStop" disabled>
+        <svg viewBox="0 0 24 24" id="icoPlay"><path d="M8 5.5v13l11-6.5z"/></svg>
+        <svg viewBox="0 0 24 24" id="icoStop" class="hide"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        <span id="btnStartStopText">Start voice</span>
+      </button>
+      <div class="ctl pitchctl"><label for="rngPitch">Pitch <output id="outPitch">0 st</output></label><input type="range" id="rngPitch" min="-24" max="24" step="1" value="0"></div>
+      <span class="flex1"></span>
+      <div class="ctl"><label for="selInput">Microphone</label><select id="selInput"></select></div>
+      <div class="ctl"><label for="selOutput">Output</label><select id="selOutput"></select></div>
+    </div>
+  </section>
+
+  <!-- First run (replaces the voice screen until the components are installed) -->
+  <section class="view" id="view-firstrun">
+    <div class="firstrun">
+      <h2>Two components to download, then you're set</h2>
+      <p>Everything runs on your machine. The files are downloaded once, verified against their published checksums, and stored locally; nothing you say ever leaves your PC.</p>
+      <div class="choices">
+        <button class="choice reco" id="chSetup">
+          <h3>Set up voice conversion <span class="tag">Required</span></h3>
+          <p>The content encoder (ContentVec) that reads your speech and the pitch model (RMVPE) that follows your melody.</p>
+          <span class="size" id="chSetupSize">~740 MB download</span>
+        </button>
+        <button class="choice" id="chSample">
+          <h3>Add the sample voice</h3>
+          <p>A generic voice from the RVC pretrained generator, so you can try the app before importing a trained voice of your own.</p>
+          <span class="size" id="chSampleSize">~73 MB download</span>
+        </button>
+      </div>
+      <div class="fr-progress" id="frProgress" hidden>
+        <div class="fr-label" id="frLabel">Downloading…</div>
+        <div class="progress"><i id="frBar" style="width:0%"></i></div>
+      </div>
+      <p class="mic-note">Your own RVC voices go in <b>Voices</b> — .onnx exports load directly, .pth checkpoints are converted there.</p>
+    </div>
+  </section>
+
+  <!-- Voices -->
+  <section class="view" id="view-voices">
+    <div class="panel">
+      <h2>Voices</h2>
+      <p class="sub">RVC v2 voices. An <b>.onnx</b> export loads as it is; a <b>.pth</b> checkpoint is converted inside the app the moment it arrives (a few seconds, nothing to install). The .index files that come with RVC voices are not used.</p>
+      <div class="hwbanner"><span class="dot"></span><span id="voiceFolderText">voices folder</span><span class="flex1"></span><button class="linkbtn" id="btnOpenVoices">Open folder</button></div>
+      <div class="dropzone" id="dropZone" aria-label="Drop voice files here">
+        <b>Drop voice files here</b>
+        <span>.pth, .onnx, or the .zip a voice library gave you — the .index file is ignored</span>
+        <span class="mono" id="dropStatus" hidden></span>
+      </div>
+      <div class="group">
+        <h3 class="h-flex">Library <span class="flex1"></span><button class="chipbtn amber" id="btnImport">Import voice…</button></h3>
+        <div class="rows" id="voiceRows"></div>
+      </div>
+      <div class="group" id="groupFind">
+        <h3>Find voices</h3>
+        <div class="findbar"><input type="search" id="findQuery" placeholder="search Hugging Face — a name, a character, a language…" value="RVC v2"><button class="chipbtn amber" id="btnFind">Search</button></div>
+        <p class="sub small">Searches huggingface.co only when you press Search. Voices on public libraries are uploaded by their users: use a voice only if you have the right to — your own recordings, or a speaker who agreed.</p>
+        <div class="rows" id="findRows"></div>
+        <p class="sub small">Other libraries, in your browser (then drop the download above): <a href="#" data-url="https://www.weights.com/">weights.com</a> · <a href="#" data-url="https://voice-models.com/">voice-models.com</a> · <a href="#" data-url="https://applio.org/">Applio</a></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Models -->
+  <section class="view" id="view-models">
+    <div class="panel">
+      <h2>Models</h2>
+      <p class="sub">Every download is verified against its published checksum before it's used.</p>
+      <div class="hwbanner"><span class="dot"></span><span id="hwText">detecting hardware…</span><span class="flex1"></span><button class="linkbtn" id="btnVerify">Verify installed files</button></div>
+      <div class="group"><h3>Components</h3><div class="rows" id="componentRows"></div></div>
+      <div class="group"><h3>Acceleration</h3><div class="rows" id="packRows"></div></div>
+      <div class="group"><h3>Downloadable voices</h3><div class="rows" id="catalogVoiceRows"></div></div>
+    </div>
+  </section>
+
+  <!-- Settings -->
+  <section class="view" id="view-settings">
+    <div class="panel">
+      <h2>Settings</h2>
+      <div class="group">
+        <div class="setrow"><span class="grow"><span class="name">Recommended defaults</span><div class="desc">Sets the block size and context to the best choice for this machine, 50 ms crossfade, loudness following on, and automatic acceleration. Your devices and voice are untouched.</div></span>
+          <button class="chipbtn amber" id="btnDefaults">Apply Recommended Default Settings</button></div>
+        <div class="setrow"><span class="grow"><span class="name">Block size</span><div class="desc">How much audio each conversion pass handles. Smaller = less delay but more passes per second; if the pace chip turns red, go up.</div></span>
+          <span class="seg" id="segBlock"><button data-v="160">160 ms</button><button data-v="250">250 ms</button><button data-v="350">350 ms</button><button data-v="500">500 ms</button></span></div>
+        <div class="setrow"><span class="grow"><span class="name">Context</span><div class="desc">Speech before each block the encoder also sees. More context is more natural and costs CPU time per pass.</div></span>
+          <span class="seg" id="segExtra"><button data-v="1000">1 s</button><button data-v="1500">1.5 s</button><button data-v="2500">2.5 s</button></span></div>
+        <div class="setrow"><span class="grow"><span class="name">Crossfade</span><div class="desc">Overlap between consecutive blocks. Longer hides seams better and adds a little delay.</div></span>
+          <span class="seg" id="segCross"><button data-v="30">30 ms</button><button data-v="50">50 ms</button><button data-v="80">80 ms</button><button data-v="120">120 ms</button></span></div>
+        <div class="setrow"><span class="grow"><span class="name">Noise gate</span><div class="desc">Frames quieter than this are silenced before conversion, so room noise never becomes a voice.</div></span>
+          <span class="seg" id="segGate"><button data-v="-60">Off</button><button data-v="-50">-50 dB</button><button data-v="-40">-40 dB</button><button data-v="-30">-30 dB</button></span></div>
+        <div class="setrow"><span class="grow"><span class="name">Loudness follows you</span><div class="desc">How much the converted voice follows your own loudness. Fully: whispers stay whispers. Off: the voice keeps its trained loudness.</div></span>
+          <span class="seg" id="segRms"><button data-v="1">Off</button><button data-v="0.5">Half</button><button data-v="0">Fully</button></span></div>
+        <div class="setrow"><span class="grow"><span class="name">Output gain</span><div class="desc">Makes the converted voice louder or quieter.</div></span>
+          <span class="seg" id="segGain"><button data-v="-6">-6 dB</button><button data-v="0">0 dB</button><button data-v="6">+6 dB</button><button data-v="12">+12 dB</button></span></div>
+        <div class="setrow"><span class="grow"><span class="name">Speaker</span><div class="desc">Voices trained with several speakers expose them by number; almost every voice has only speaker 0.</div></span>
+          <select class="setsel small" id="selSpeaker"></select></div>
+        <div class="setrow"><span class="grow"><span class="name">Monitor</span><div class="desc">Also play the converted voice to a second output — your headphones — so you hear what others hear.</div></span>
+          <select class="setsel" id="selMonitor"></select></div>
+        <div class="setrow"><span class="grow"><span class="name">Acceleration</span><div class="desc" id="accelDesc">Auto uses GPU acceleration when it is installed and this machine can run it; CPU forces the processor. Applies after a restart.</div></span>
+          <span class="seg" id="segAccel"><button data-v="auto">Auto</button><button data-v="gpu">GPU</button><button data-v="cpu">CPU</button></span></div>
+        <div class="setrow last" id="rowVirtualMic"><span class="grow"><span class="name">Virtual microphone</span><div class="desc" id="virtualMicDesc">Creates "Morphonic-Voice-Mic", an input other programs can pick, and plays the voice into it. Needs PipeWire (pipewire-pulse). Applies after a restart.</div></span>
+          <span class="toggle" id="tglVirtualMic" role="switch" aria-checked="false" tabindex="0"><i></i><b></b></span></div>
+      </div>
+      <div class="group">
+        <h3>Speed check</h3>
+        <div class="setrow last"><span class="grow"><span class="name">How fast is conversion on this PC?</span><div class="desc">Converts a bundled 14-second clip with the chosen voice, block by block as the live loop does, and rates the result. Takes under a minute; the voice must be stopped. The result is also written to bench.log for bug reports.</div>
+          <div class="bench" id="benchOut" hidden></div></span>
+          <button class="chipbtn amber" id="btnBench">Run speed check</button></div>
+      </div>
+      <div class="group" id="groupConversion">
+        <h3>Conversion</h3>
+        <div class="setrow last"><span class="grow"><span class="name">Converting .pth voices</span><div class="desc" id="pythonDesc">Standard RVC v2 voices convert inside the app. A checkpoint with an unusual configuration falls back to the bundled Python tool, which needs Python 3 with PyTorch.</div></span>
+          <button class="chipbtn" id="btnInstallConverter">Install fallback converter</button></div>
+      </div>
+      <div class="group" id="groupDesktop" hidden>
+        <h3>Desktop</h3>
+        <div class="setrow last"><span class="grow"><span class="name">Add to app grid</span><div class="desc" id="installDesc">Copies Morphonic to ~/.local/share/Morphonic/app and adds it to your app grid. No root needed.</div></span>
+          <button class="chipbtn" id="btnInstall">Add to app grid</button></div>
+      </div>
+      <div class="group">
+        <h3>About</h3>
+        <div class="setrow"><span class="grow"><span class="name">Morphonic <span class="fixed-note" id="appVer"></span></span><div class="desc">Real-time RVC voice changer. Runs entirely on this machine — no accounts, no telemetry.</div><div class="desc" id="machineLine"></div><div class="desc" id="dataDirLine"></div></span>
+          <button class="chipbtn" id="btnOpenData" hidden>Open folder</button></div>
+        <div class="setrow"><span class="grow"><span class="name">Updates</span><div class="desc" id="updateDesc">Asks github.com for the latest release when you press the button. Nothing is checked on its own.</div><div class="desc" id="updateNotes" hidden></div></span>
+          <button class="chipbtn" id="btnGetUpdate" hidden>Open download page</button>
+          <button class="chipbtn" id="btnCheckUpdate">Check for updates</button></div>
+        <div class="setrow"><span class="grow"><span class="name">Read me</span><div class="desc">Setup and usage guide.</div></span>
+          <button class="chipbtn" id="btnDocReadme">View</button></div>
+        <pre class="docview" id="docReadme"></pre>
+        <div class="setrow"><span class="grow"><span class="name">License</span><div class="desc">The terms this app is distributed under.</div></span>
+          <button class="chipbtn" id="btnDocLicense">View</button></div>
+        <pre class="docview" id="docLicense"></pre>
+        <div class="setrow last"><span class="grow"><span class="name">Third-party notices</span><div class="desc">Credits and licenses for the open-source components and models.</div></span>
+          <button class="chipbtn" id="btnDocNotice">View</button></div>
+        <pre class="docview" id="docNotice"></pre>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

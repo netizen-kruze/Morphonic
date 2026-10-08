@@ -1,0 +1,12 @@
+The Python files in this folder are copied without changes from
+https://github.com/w-okada/voice-changer (MIT License, Copyright (c) 2022
+Wataru Okada), commit d8ef15799470193f7c8176ef471245753a656626, path
+server/voice_changer/RVC/inferencer/rvc_models/infer_pack/. They implement
+the RVC synthesizer network originally published by
+https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI
+(MIT License). SHA-256 of the copies:
+  attentions.py  e7ec2d0bc2f86ab0b00947e834e0f7576c5d203f27073bf43ec40bc46984cab6
+  commons.py     08c041d28b06f2103b67b9c6133612e64cf16a06e43039c750b3ab89b76bf263
+  models.py      27e2f6943c2ed55e208f76ab7e555b591b211b5e2d390315a0cbdb305ffe0829
+  modules.py     3a7dd0ff1bc0f308757a0f7bb359eacfe1e5b292f5953f93c565b4efe7f54f2d
+  transforms.py  d3999b6417a9ce2e5557444ccde168625bf19cb60511664decf7e74fc7e74900

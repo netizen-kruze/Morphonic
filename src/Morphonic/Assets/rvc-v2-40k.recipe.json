@@ -1,0 +1,2886 @@
+{
+ "format": "morphonic-model-recipe",
+ "formatVersion": 1,
+ "template": "rvc-v2-40k.template",
+ "templateSha256": "dbf7896d28ddcc608d6fb0d0458658e7c5539554b278150a6fa76737d166aedd",
+ "source": {
+  "file": "f0G40k.pth",
+  "sha256": "3b2c44035e782c4b14ddc0bede9e2f4a724d025cd073f736d4f43708453adfcb",
+  "sizeBytes": 73106273,
+  "stateKey": "weight"
+ },
+ "export": {
+  "file": "gen-40k.onnx",
+  "sha256": "a32b3f0c47bbb462538e73cfc3682a2c98f3bcb71ba13ef6d3985c59656e7135"
+ },
+ "tensors": [
+  {
+   "name": "enc_p.emb_pitch.weight",
+   "dims": [
+    256,
+    192
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.emb_pitch.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.0.emb_rel_k",
+   "dims": [
+    1,
+    21,
+    96
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.0.emb_rel_k"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.0.emb_rel_v",
+   "dims": [
+    1,
+    21,
+    96
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.0.emb_rel_v"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.0.conv_q.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.0.conv_q.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.0.conv_k.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.0.conv_k.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.0.conv_v.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.0.conv_v.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.0.conv_o.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.0.conv_o.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.1.emb_rel_k",
+   "dims": [
+    1,
+    21,
+    96
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.1.emb_rel_k"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.1.emb_rel_v",
+   "dims": [
+    1,
+    21,
+    96
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.1.emb_rel_v"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.1.conv_q.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.1.conv_q.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.1.conv_k.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.1.conv_k.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.1.conv_v.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.1.conv_v.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.1.conv_o.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.1.conv_o.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.2.emb_rel_k",
+   "dims": [
+    1,
+    21,
+    96
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.2.emb_rel_k"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.2.emb_rel_v",
+   "dims": [
+    1,
+    21,
+    96
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.2.emb_rel_v"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.2.conv_q.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.2.conv_q.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.2.conv_k.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.2.conv_k.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.2.conv_v.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.2.conv_v.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.2.conv_o.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.2.conv_o.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.3.emb_rel_k",
+   "dims": [
+    1,
+    21,
+    96
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.3.emb_rel_k"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.3.emb_rel_v",
+   "dims": [
+    1,
+    21,
+    96
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.3.emb_rel_v"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.3.conv_q.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.3.conv_q.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.3.conv_k.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.3.conv_k.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.3.conv_v.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.3.conv_v.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.3.conv_o.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.3.conv_o.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.4.emb_rel_k",
+   "dims": [
+    1,
+    21,
+    96
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.4.emb_rel_k"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.4.emb_rel_v",
+   "dims": [
+    1,
+    21,
+    96
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.4.emb_rel_v"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.4.conv_q.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.4.conv_q.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.4.conv_k.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.4.conv_k.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.4.conv_v.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.4.conv_v.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.4.conv_o.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.4.conv_o.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.5.emb_rel_k",
+   "dims": [
+    1,
+    21,
+    96
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.5.emb_rel_k"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.5.emb_rel_v",
+   "dims": [
+    1,
+    21,
+    96
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.5.emb_rel_v"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.5.conv_q.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.5.conv_q.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.5.conv_k.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.5.conv_k.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.5.conv_v.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.5.conv_v.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.attn_layers.5.conv_o.weight",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.attn_layers.5.conv_o.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.0.conv_1.weight",
+   "dims": [
+    768,
+    192,
+    3
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.0.conv_1.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.0.conv_1.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.0.conv_1.bias"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.0.conv_2.weight",
+   "dims": [
+    192,
+    768,
+    3
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.0.conv_2.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.1.conv_1.weight",
+   "dims": [
+    768,
+    192,
+    3
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.1.conv_1.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.1.conv_1.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.1.conv_1.bias"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.1.conv_2.weight",
+   "dims": [
+    192,
+    768,
+    3
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.1.conv_2.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.2.conv_1.weight",
+   "dims": [
+    768,
+    192,
+    3
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.2.conv_1.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.2.conv_1.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.2.conv_1.bias"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.2.conv_2.weight",
+   "dims": [
+    192,
+    768,
+    3
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.2.conv_2.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.3.conv_1.weight",
+   "dims": [
+    768,
+    192,
+    3
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.3.conv_1.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.3.conv_1.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.3.conv_1.bias"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.3.conv_2.weight",
+   "dims": [
+    192,
+    768,
+    3
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.3.conv_2.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.4.conv_1.weight",
+   "dims": [
+    768,
+    192,
+    3
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.4.conv_1.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.4.conv_1.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.4.conv_1.bias"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.4.conv_2.weight",
+   "dims": [
+    192,
+    768,
+    3
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.4.conv_2.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.5.conv_1.weight",
+   "dims": [
+    768,
+    192,
+    3
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.5.conv_1.weight"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.5.conv_1.bias",
+   "dims": [
+    768
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.5.conv_1.bias"
+   ]
+  },
+  {
+   "name": "enc_p.encoder.ffn_layers.5.conv_2.weight",
+   "dims": [
+    192,
+    768,
+    3
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.encoder.ffn_layers.5.conv_2.weight"
+   ]
+  },
+  {
+   "name": "enc_p.proj.weight",
+   "dims": [
+    384,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.proj.weight"
+   ]
+  },
+  {
+   "name": "enc_p.proj.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "enc_p.proj.bias"
+   ]
+  },
+  {
+   "name": "dec.noise_convs.0.weight",
+   "dims": [
+    256,
+    1,
+    80
+   ],
+   "op": "copy",
+   "src": [
+    "dec.noise_convs.0.weight"
+   ]
+  },
+  {
+   "name": "dec.noise_convs.0.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.noise_convs.0.bias"
+   ]
+  },
+  {
+   "name": "dec.noise_convs.1.weight",
+   "dims": [
+    128,
+    1,
+    8
+   ],
+   "op": "copy",
+   "src": [
+    "dec.noise_convs.1.weight"
+   ]
+  },
+  {
+   "name": "dec.noise_convs.2.weight",
+   "dims": [
+    64,
+    1,
+    4
+   ],
+   "op": "copy",
+   "src": [
+    "dec.noise_convs.2.weight"
+   ]
+  },
+  {
+   "name": "dec.conv_pre.weight",
+   "dims": [
+    512,
+    192,
+    7
+   ],
+   "op": "copy",
+   "src": [
+    "dec.conv_pre.weight"
+   ]
+  },
+  {
+   "name": "dec.conv_pre.bias",
+   "dims": [
+    512
+   ],
+   "op": "copy",
+   "src": [
+    "dec.conv_pre.bias"
+   ]
+  },
+  {
+   "name": "dec.ups.0.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.ups.0.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.0.convs1.0.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.0.convs1.0.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.0.convs1.1.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.0.convs1.1.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.0.convs1.2.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.0.convs1.2.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.0.convs2.0.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.0.convs2.0.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.0.convs2.1.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.0.convs2.1.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.0.convs2.2.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.0.convs2.2.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.1.convs1.0.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.1.convs1.0.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.1.convs1.1.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.1.convs1.1.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.1.convs1.2.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.1.convs1.2.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.1.convs2.0.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.1.convs2.0.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.1.convs2.1.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.1.convs2.1.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.1.convs2.2.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.1.convs2.2.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.2.convs1.0.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.2.convs1.0.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.2.convs1.1.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.2.convs1.1.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.2.convs1.2.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.2.convs1.2.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.2.convs2.0.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.2.convs2.0.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.2.convs2.1.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.2.convs2.1.bias"
+   ]
+  },
+  {
+   "name": "dec.resblocks.2.convs2.2.bias",
+   "dims": [
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "dec.resblocks.2.convs2.2.bias"
+   ]
+  },
+  {
+   "name": "dec.cond.weight",
+   "dims": [
+    512,
+    256,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "dec.cond.weight"
+   ]
+  },
+  {
+   "name": "dec.cond.bias",
+   "dims": [
+    512
+   ],
+   "op": "copy",
+   "src": [
+    "dec.cond.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.0.pre.weight",
+   "dims": [
+    192,
+    96,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.0.pre.weight"
+   ]
+  },
+  {
+   "name": "flow.flows.0.enc.in_layers.0.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.0.enc.in_layers.0.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.0.enc.in_layers.1.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.0.enc.in_layers.1.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.0.enc.in_layers.2.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.0.enc.in_layers.2.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.0.enc.res_skip_layers.0.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.0.enc.res_skip_layers.0.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.0.enc.res_skip_layers.1.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.0.enc.res_skip_layers.1.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.0.enc.cond_layer.bias",
+   "dims": [
+    1152
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.0.enc.cond_layer.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.0.post.weight",
+   "dims": [
+    96,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.0.post.weight"
+   ]
+  },
+  {
+   "name": "flow.flows.2.pre.weight",
+   "dims": [
+    192,
+    96,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.2.pre.weight"
+   ]
+  },
+  {
+   "name": "flow.flows.2.enc.in_layers.0.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.2.enc.in_layers.0.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.2.enc.in_layers.1.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.2.enc.in_layers.1.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.2.enc.in_layers.2.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.2.enc.in_layers.2.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.2.enc.res_skip_layers.0.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.2.enc.res_skip_layers.0.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.2.enc.res_skip_layers.1.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.2.enc.res_skip_layers.1.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.2.enc.cond_layer.bias",
+   "dims": [
+    1152
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.2.enc.cond_layer.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.2.post.weight",
+   "dims": [
+    96,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.2.post.weight"
+   ]
+  },
+  {
+   "name": "flow.flows.4.pre.weight",
+   "dims": [
+    192,
+    96,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.4.pre.weight"
+   ]
+  },
+  {
+   "name": "flow.flows.4.enc.in_layers.0.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.4.enc.in_layers.0.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.4.enc.in_layers.1.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.4.enc.in_layers.1.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.4.enc.in_layers.2.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.4.enc.in_layers.2.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.4.enc.res_skip_layers.0.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.4.enc.res_skip_layers.0.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.4.enc.res_skip_layers.1.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.4.enc.res_skip_layers.1.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.4.enc.cond_layer.bias",
+   "dims": [
+    1152
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.4.enc.cond_layer.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.4.post.weight",
+   "dims": [
+    96,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.4.post.weight"
+   ]
+  },
+  {
+   "name": "flow.flows.6.pre.weight",
+   "dims": [
+    192,
+    96,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.6.pre.weight"
+   ]
+  },
+  {
+   "name": "flow.flows.6.enc.in_layers.0.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.6.enc.in_layers.0.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.6.enc.in_layers.1.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.6.enc.in_layers.1.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.6.enc.in_layers.2.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.6.enc.in_layers.2.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.6.enc.res_skip_layers.0.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.6.enc.res_skip_layers.0.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.6.enc.res_skip_layers.1.bias",
+   "dims": [
+    384
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.6.enc.res_skip_layers.1.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.6.enc.cond_layer.bias",
+   "dims": [
+    1152
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.6.enc.cond_layer.bias"
+   ]
+  },
+  {
+   "name": "flow.flows.6.post.weight",
+   "dims": [
+    96,
+    192,
+    1
+   ],
+   "op": "copy",
+   "src": [
+    "flow.flows.6.post.weight"
+   ]
+  },
+  {
+   "name": "emb_g.weight",
+   "dims": [
+    109,
+    256
+   ],
+   "op": "copy",
+   "src": [
+    "emb_g.weight"
+   ],
+   "dimsFromSource": true
+  },
+  {
+   "name": "onnx::MatMul_5306",
+   "dims": [
+    768,
+    192
+   ],
+   "op": "transpose",
+   "src": [
+    "enc_p.emb_phone.weight"
+   ]
+  },
+  {
+   "name": "onnx::Conv_5861",
+   "dims": [
+    1152,
+    256,
+    1
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.6.enc.cond_layer.weight_g",
+    "flow.flows.6.enc.cond_layer.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_5864",
+   "dims": [
+    384,
+    192,
+    5
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.6.enc.in_layers.0.weight_g",
+    "flow.flows.6.enc.in_layers.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_5879",
+   "dims": [
+    384,
+    192,
+    1
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.6.enc.res_skip_layers.0.weight_g",
+    "flow.flows.6.enc.res_skip_layers.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_5890",
+   "dims": [
+    384,
+    192,
+    5
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.6.enc.in_layers.1.weight_g",
+    "flow.flows.6.enc.in_layers.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_5905",
+   "dims": [
+    384,
+    192,
+    1
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.6.enc.res_skip_layers.1.weight_g",
+    "flow.flows.6.enc.res_skip_layers.1.weight_v"
+   ],
+   "maxDiffFromExport": 1.1920928955078125e-07
+  },
+  {
+   "name": "onnx::Conv_5916",
+   "dims": [
+    384,
+    192,
+    5
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.6.enc.in_layers.2.weight_g",
+    "flow.flows.6.enc.in_layers.2.weight_v"
+   ],
+   "maxDiffFromExport": 4.470348358154297e-08
+  },
+  {
+   "name": "onnx::Conv_5931",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.6.enc.res_skip_layers.2.weight_g",
+    "flow.flows.6.enc.res_skip_layers.2.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_5934",
+   "dims": [
+    1152,
+    256,
+    1
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.4.enc.cond_layer.weight_g",
+    "flow.flows.4.enc.cond_layer.weight_v"
+   ],
+   "maxDiffFromExport": 4.470348358154297e-08
+  },
+  {
+   "name": "onnx::Conv_5937",
+   "dims": [
+    384,
+    192,
+    5
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.4.enc.in_layers.0.weight_g",
+    "flow.flows.4.enc.in_layers.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_5952",
+   "dims": [
+    384,
+    192,
+    1
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.4.enc.res_skip_layers.0.weight_g",
+    "flow.flows.4.enc.res_skip_layers.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_5963",
+   "dims": [
+    384,
+    192,
+    5
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.4.enc.in_layers.1.weight_g",
+    "flow.flows.4.enc.in_layers.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_5978",
+   "dims": [
+    384,
+    192,
+    1
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.4.enc.res_skip_layers.1.weight_g",
+    "flow.flows.4.enc.res_skip_layers.1.weight_v"
+   ],
+   "maxDiffFromExport": 1.1920928955078125e-07
+  },
+  {
+   "name": "onnx::Conv_5989",
+   "dims": [
+    384,
+    192,
+    5
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.4.enc.in_layers.2.weight_g",
+    "flow.flows.4.enc.in_layers.2.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6004",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.4.enc.res_skip_layers.2.weight_g",
+    "flow.flows.4.enc.res_skip_layers.2.weight_v"
+   ],
+   "maxDiffFromExport": 1.4901161193847656e-08
+  },
+  {
+   "name": "onnx::Conv_6007",
+   "dims": [
+    1152,
+    256,
+    1
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.2.enc.cond_layer.weight_g",
+    "flow.flows.2.enc.cond_layer.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6010",
+   "dims": [
+    384,
+    192,
+    5
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.2.enc.in_layers.0.weight_g",
+    "flow.flows.2.enc.in_layers.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6025",
+   "dims": [
+    384,
+    192,
+    1
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.2.enc.res_skip_layers.0.weight_g",
+    "flow.flows.2.enc.res_skip_layers.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6036",
+   "dims": [
+    384,
+    192,
+    5
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.2.enc.in_layers.1.weight_g",
+    "flow.flows.2.enc.in_layers.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6051",
+   "dims": [
+    384,
+    192,
+    1
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.2.enc.res_skip_layers.1.weight_g",
+    "flow.flows.2.enc.res_skip_layers.1.weight_v"
+   ],
+   "maxDiffFromExport": 1.1920928955078125e-07
+  },
+  {
+   "name": "onnx::Conv_6062",
+   "dims": [
+    384,
+    192,
+    5
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.2.enc.in_layers.2.weight_g",
+    "flow.flows.2.enc.in_layers.2.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6077",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.2.enc.res_skip_layers.2.weight_g",
+    "flow.flows.2.enc.res_skip_layers.2.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6080",
+   "dims": [
+    1152,
+    256,
+    1
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.0.enc.cond_layer.weight_g",
+    "flow.flows.0.enc.cond_layer.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6083",
+   "dims": [
+    384,
+    192,
+    5
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.0.enc.in_layers.0.weight_g",
+    "flow.flows.0.enc.in_layers.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6098",
+   "dims": [
+    384,
+    192,
+    1
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.0.enc.res_skip_layers.0.weight_g",
+    "flow.flows.0.enc.res_skip_layers.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6109",
+   "dims": [
+    384,
+    192,
+    5
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.0.enc.in_layers.1.weight_g",
+    "flow.flows.0.enc.in_layers.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6124",
+   "dims": [
+    384,
+    192,
+    1
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.0.enc.res_skip_layers.1.weight_g",
+    "flow.flows.0.enc.res_skip_layers.1.weight_v"
+   ],
+   "maxDiffFromExport": 1.1920928955078125e-07
+  },
+  {
+   "name": "onnx::Conv_6135",
+   "dims": [
+    384,
+    192,
+    5
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.0.enc.in_layers.2.weight_g",
+    "flow.flows.0.enc.in_layers.2.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6150",
+   "dims": [
+    192,
+    192,
+    1
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "flow.flows.0.enc.res_skip_layers.2.weight_g",
+    "flow.flows.0.enc.res_skip_layers.2.weight_v"
+   ],
+   "maxDiffFromExport": 1.4901161193847656e-08
+  },
+  {
+   "name": "onnx::ConvTranspose_6174",
+   "dims": [
+    512,
+    256,
+    16
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.ups.0.weight_g",
+    "dec.ups.0.weight_v"
+   ],
+   "maxDiffFromExport": 4.470348358154297e-08
+  },
+  {
+   "name": "onnx::Conv_6180",
+   "dims": [
+    256,
+    256,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.0.convs1.0.weight_g",
+    "dec.resblocks.0.convs1.0.weight_v"
+   ],
+   "maxDiffFromExport": 2.384185791015625e-07
+  },
+  {
+   "name": "onnx::Conv_6183",
+   "dims": [
+    256,
+    256,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.0.convs2.0.weight_g",
+    "dec.resblocks.0.convs2.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6186",
+   "dims": [
+    256,
+    256,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.0.convs1.1.weight_g",
+    "dec.resblocks.0.convs1.1.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6189",
+   "dims": [
+    256,
+    256,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.0.convs2.1.weight_g",
+    "dec.resblocks.0.convs2.1.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6192",
+   "dims": [
+    256,
+    256,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.0.convs1.2.weight_g",
+    "dec.resblocks.0.convs1.2.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6195",
+   "dims": [
+    256,
+    256,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.0.convs2.2.weight_g",
+    "dec.resblocks.0.convs2.2.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6198",
+   "dims": [
+    256,
+    256,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.1.convs1.0.weight_g",
+    "dec.resblocks.1.convs1.0.weight_v"
+   ],
+   "maxDiffFromExport": 1.1920928955078125e-07
+  },
+  {
+   "name": "onnx::Conv_6201",
+   "dims": [
+    256,
+    256,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.1.convs2.0.weight_g",
+    "dec.resblocks.1.convs2.0.weight_v"
+   ],
+   "maxDiffFromExport": 1.1920928955078125e-07
+  },
+  {
+   "name": "onnx::Conv_6204",
+   "dims": [
+    256,
+    256,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.1.convs1.1.weight_g",
+    "dec.resblocks.1.convs1.1.weight_v"
+   ],
+   "maxDiffFromExport": 1.1920928955078125e-07
+  },
+  {
+   "name": "onnx::Conv_6207",
+   "dims": [
+    256,
+    256,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.1.convs2.1.weight_g",
+    "dec.resblocks.1.convs2.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6210",
+   "dims": [
+    256,
+    256,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.1.convs1.2.weight_g",
+    "dec.resblocks.1.convs1.2.weight_v"
+   ],
+   "maxDiffFromExport": 1.1920928955078125e-07
+  },
+  {
+   "name": "onnx::Conv_6213",
+   "dims": [
+    256,
+    256,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.1.convs2.2.weight_g",
+    "dec.resblocks.1.convs2.2.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6216",
+   "dims": [
+    256,
+    256,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.2.convs1.0.weight_g",
+    "dec.resblocks.2.convs1.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6219",
+   "dims": [
+    256,
+    256,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.2.convs2.0.weight_g",
+    "dec.resblocks.2.convs2.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6222",
+   "dims": [
+    256,
+    256,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.2.convs1.1.weight_g",
+    "dec.resblocks.2.convs1.1.weight_v"
+   ],
+   "maxDiffFromExport": 1.1920928955078125e-07
+  },
+  {
+   "name": "onnx::Conv_6225",
+   "dims": [
+    256,
+    256,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.2.convs2.1.weight_g",
+    "dec.resblocks.2.convs2.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6228",
+   "dims": [
+    256,
+    256,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.2.convs1.2.weight_g",
+    "dec.resblocks.2.convs1.2.weight_v"
+   ],
+   "maxDiffFromExport": 1.1920928955078125e-07
+  },
+  {
+   "name": "onnx::Conv_6231",
+   "dims": [
+    256,
+    256,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.2.convs2.2.weight_g",
+    "dec.resblocks.2.convs2.2.weight_v"
+   ],
+   "maxDiffFromExport": 1.7881393432617188e-07
+  },
+  {
+   "name": "onnx::ConvTranspose_6234",
+   "dims": [
+    256,
+    128,
+    16
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.ups.1.weight_g",
+    "dec.ups.1.weight_v"
+   ],
+   "maxDiffFromExport": 2.2351741790771484e-08
+  },
+  {
+   "name": "onnx::Conv_6240",
+   "dims": [
+    128,
+    128,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.3.convs1.0.weight_g",
+    "dec.resblocks.3.convs1.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6243",
+   "dims": [
+    128,
+    128,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.3.convs2.0.weight_g",
+    "dec.resblocks.3.convs2.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6246",
+   "dims": [
+    128,
+    128,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.3.convs1.1.weight_g",
+    "dec.resblocks.3.convs1.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6249",
+   "dims": [
+    128,
+    128,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.3.convs2.1.weight_g",
+    "dec.resblocks.3.convs2.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6252",
+   "dims": [
+    128,
+    128,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.3.convs1.2.weight_g",
+    "dec.resblocks.3.convs1.2.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6255",
+   "dims": [
+    128,
+    128,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.3.convs2.2.weight_g",
+    "dec.resblocks.3.convs2.2.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6258",
+   "dims": [
+    128,
+    128,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.4.convs1.0.weight_g",
+    "dec.resblocks.4.convs1.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6261",
+   "dims": [
+    128,
+    128,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.4.convs2.0.weight_g",
+    "dec.resblocks.4.convs2.0.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6264",
+   "dims": [
+    128,
+    128,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.4.convs1.1.weight_g",
+    "dec.resblocks.4.convs1.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6267",
+   "dims": [
+    128,
+    128,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.4.convs2.1.weight_g",
+    "dec.resblocks.4.convs2.1.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6270",
+   "dims": [
+    128,
+    128,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.4.convs1.2.weight_g",
+    "dec.resblocks.4.convs1.2.weight_v"
+   ],
+   "maxDiffFromExport": 8.940696716308594e-08
+  },
+  {
+   "name": "onnx::Conv_6273",
+   "dims": [
+    128,
+    128,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.4.convs2.2.weight_g",
+    "dec.resblocks.4.convs2.2.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6276",
+   "dims": [
+    128,
+    128,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.5.convs1.0.weight_g",
+    "dec.resblocks.5.convs1.0.weight_v"
+   ],
+   "maxDiffFromExport": 1.1920928955078125e-07
+  },
+  {
+   "name": "onnx::Conv_6279",
+   "dims": [
+    128,
+    128,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.5.convs2.0.weight_g",
+    "dec.resblocks.5.convs2.0.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6282",
+   "dims": [
+    128,
+    128,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.5.convs1.1.weight_g",
+    "dec.resblocks.5.convs1.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6285",
+   "dims": [
+    128,
+    128,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.5.convs2.1.weight_g",
+    "dec.resblocks.5.convs2.1.weight_v"
+   ],
+   "maxDiffFromExport": 8.940696716308594e-08
+  },
+  {
+   "name": "onnx::Conv_6288",
+   "dims": [
+    128,
+    128,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.5.convs1.2.weight_g",
+    "dec.resblocks.5.convs1.2.weight_v"
+   ],
+   "maxDiffFromExport": 1.1920928955078125e-07
+  },
+  {
+   "name": "onnx::Conv_6291",
+   "dims": [
+    128,
+    128,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.5.convs2.2.weight_g",
+    "dec.resblocks.5.convs2.2.weight_v"
+   ],
+   "maxDiffFromExport": 1.1920928955078125e-07
+  },
+  {
+   "name": "onnx::ConvTranspose_6294",
+   "dims": [
+    128,
+    64,
+    4
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.ups.2.weight_g",
+    "dec.ups.2.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6300",
+   "dims": [
+    64,
+    64,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.6.convs1.0.weight_g",
+    "dec.resblocks.6.convs1.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6303",
+   "dims": [
+    64,
+    64,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.6.convs2.0.weight_g",
+    "dec.resblocks.6.convs2.0.weight_v"
+   ],
+   "maxDiffFromExport": 1.1920928955078125e-07
+  },
+  {
+   "name": "onnx::Conv_6306",
+   "dims": [
+    64,
+    64,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.6.convs1.1.weight_g",
+    "dec.resblocks.6.convs1.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6309",
+   "dims": [
+    64,
+    64,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.6.convs2.1.weight_g",
+    "dec.resblocks.6.convs2.1.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6312",
+   "dims": [
+    64,
+    64,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.6.convs1.2.weight_g",
+    "dec.resblocks.6.convs1.2.weight_v"
+   ],
+   "maxDiffFromExport": 1.1920928955078125e-07
+  },
+  {
+   "name": "onnx::Conv_6315",
+   "dims": [
+    64,
+    64,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.6.convs2.2.weight_g",
+    "dec.resblocks.6.convs2.2.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6318",
+   "dims": [
+    64,
+    64,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.7.convs1.0.weight_g",
+    "dec.resblocks.7.convs1.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6321",
+   "dims": [
+    64,
+    64,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.7.convs2.0.weight_g",
+    "dec.resblocks.7.convs2.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6324",
+   "dims": [
+    64,
+    64,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.7.convs1.1.weight_g",
+    "dec.resblocks.7.convs1.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6327",
+   "dims": [
+    64,
+    64,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.7.convs2.1.weight_g",
+    "dec.resblocks.7.convs2.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6330",
+   "dims": [
+    64,
+    64,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.7.convs1.2.weight_g",
+    "dec.resblocks.7.convs1.2.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6333",
+   "dims": [
+    64,
+    64,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.7.convs2.2.weight_g",
+    "dec.resblocks.7.convs2.2.weight_v"
+   ],
+   "maxDiffFromExport": 1.1920928955078125e-07
+  },
+  {
+   "name": "onnx::Conv_6336",
+   "dims": [
+    64,
+    64,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.8.convs1.0.weight_g",
+    "dec.resblocks.8.convs1.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6339",
+   "dims": [
+    64,
+    64,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.8.convs2.0.weight_g",
+    "dec.resblocks.8.convs2.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6342",
+   "dims": [
+    64,
+    64,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.8.convs1.1.weight_g",
+    "dec.resblocks.8.convs1.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6345",
+   "dims": [
+    64,
+    64,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.8.convs2.1.weight_g",
+    "dec.resblocks.8.convs2.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6348",
+   "dims": [
+    64,
+    64,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.8.convs1.2.weight_g",
+    "dec.resblocks.8.convs1.2.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6351",
+   "dims": [
+    64,
+    64,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.8.convs2.2.weight_g",
+    "dec.resblocks.8.convs2.2.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::ConvTranspose_6354",
+   "dims": [
+    64,
+    32,
+    4
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.ups.3.weight_g",
+    "dec.ups.3.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6360",
+   "dims": [
+    32,
+    32,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.9.convs1.0.weight_g",
+    "dec.resblocks.9.convs1.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6363",
+   "dims": [
+    32,
+    32,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.9.convs2.0.weight_g",
+    "dec.resblocks.9.convs2.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6366",
+   "dims": [
+    32,
+    32,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.9.convs1.1.weight_g",
+    "dec.resblocks.9.convs1.1.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6369",
+   "dims": [
+    32,
+    32,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.9.convs2.1.weight_g",
+    "dec.resblocks.9.convs2.1.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6372",
+   "dims": [
+    32,
+    32,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.9.convs1.2.weight_g",
+    "dec.resblocks.9.convs1.2.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6375",
+   "dims": [
+    32,
+    32,
+    3
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.9.convs2.2.weight_g",
+    "dec.resblocks.9.convs2.2.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6378",
+   "dims": [
+    32,
+    32,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.10.convs1.0.weight_g",
+    "dec.resblocks.10.convs1.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6381",
+   "dims": [
+    32,
+    32,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.10.convs2.0.weight_g",
+    "dec.resblocks.10.convs2.0.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6384",
+   "dims": [
+    32,
+    32,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.10.convs1.1.weight_g",
+    "dec.resblocks.10.convs1.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6387",
+   "dims": [
+    32,
+    32,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.10.convs2.1.weight_g",
+    "dec.resblocks.10.convs2.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6390",
+   "dims": [
+    32,
+    32,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.10.convs1.2.weight_g",
+    "dec.resblocks.10.convs1.2.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6393",
+   "dims": [
+    32,
+    32,
+    7
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.10.convs2.2.weight_g",
+    "dec.resblocks.10.convs2.2.weight_v"
+   ],
+   "maxDiffFromExport": 8.940696716308594e-08
+  },
+  {
+   "name": "onnx::Conv_6396",
+   "dims": [
+    32,
+    32,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.11.convs1.0.weight_g",
+    "dec.resblocks.11.convs1.0.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6399",
+   "dims": [
+    32,
+    32,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.11.convs2.0.weight_g",
+    "dec.resblocks.11.convs2.0.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6402",
+   "dims": [
+    32,
+    32,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.11.convs1.1.weight_g",
+    "dec.resblocks.11.convs1.1.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6405",
+   "dims": [
+    32,
+    32,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.11.convs2.1.weight_g",
+    "dec.resblocks.11.convs2.1.weight_v"
+   ],
+   "maxDiffFromExport": 2.9802322387695312e-08
+  },
+  {
+   "name": "onnx::Conv_6408",
+   "dims": [
+    32,
+    32,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.11.convs1.2.weight_g",
+    "dec.resblocks.11.convs1.2.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  },
+  {
+   "name": "onnx::Conv_6411",
+   "dims": [
+    32,
+    32,
+    11
+   ],
+   "op": "weightnorm",
+   "dim": 0,
+   "src": [
+    "dec.resblocks.11.convs2.2.weight_g",
+    "dec.resblocks.11.convs2.2.weight_v"
+   ],
+   "maxDiffFromExport": 5.960464477539063e-08
+  }
+ ]
+}

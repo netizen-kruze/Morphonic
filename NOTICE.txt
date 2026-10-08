@@ -1,0 +1,41 @@
+Morphonic — real-time RVC voice changer, running on your own PC
+===========================================================
+
+Third-party software
+--------------------
+- ONNX Runtime — MIT (Microsoft)
+- Photino.NET — Apache-2.0 (TryPhotino)
+- NAudio (Core, Wasapi) — MIT (Mark Heath)
+- Newtonsoft.Json — MIT (James Newton-King)
+- RVC synthesizer network definitions (tools/rvc_infer_pack) — MIT
+  (RVC-Project/Retrieval-based-Voice-Conversion-WebUI; copies via
+  w-okada/voice-changer, Copyright (c) 2022 Wataru Okada)
+- Atkinson Hyperlegible font — SIL OFL 1.1 (Braille Institute of America)
+- IBM Plex Sans / IBM Plex Mono fonts — SIL OFL 1.1 (IBM)
+
+Downloaded at the user's request, never bundled
+-----------------------------------------------
+- ContentVec content encoder — MIT (auspicious3000/contentvec; Transformers
+  checkpoint by lengyue233, content-vec-best; the app downloads that
+  checkpoint and assembles the ONNX model itself)
+- RMVPE pitch model — MIT (yxlllc/RMVPE; ONNX export published by the RVC
+  project, lj1995/VoiceConversionWebUI)
+- Sample voice — MIT (RVC v2 pretrained generator f0G40k by the RVC project,
+  lj1995/VoiceConversionWebUI; the app downloads that checkpoint and
+  assembles the ONNX model itself)
+- GPU acceleration, Windows — ONNX Runtime DirectML build (MIT, Microsoft)
+  and DirectML (Microsoft DirectML license; its text is saved beside the
+  library as DIRECTML-LICENSE.txt)
+- GPU acceleration, Linux — ONNX Runtime CUDA build (MIT, Microsoft) and the
+  NVIDIA CUDA 12 runtime, cuBLAS, cuFFT, cuRAND, cuDNN 9 and nvJitLink
+  (NVIDIA Software License Agreements; their texts are saved beside the
+  libraries as NVIDIA-CUDA-LICENSE.txt and NVIDIA-CUDNN-LICENSE.txt)
+
+The optional .pth converter (tools/morphonic_export.py) uses PyTorch (BSD-3),
+ONNX (Apache-2.0), onnxruntime (MIT) and Transformers (Apache-2.0), which
+the user installs with pip.
+
+A machine-readable manifest of installed models and their licenses is
+written next to the models themselves (models_manifest.json, LICENSES.txt).
+
+Full license texts for the bundled components: THIRD_PARTY_LICENSES.md.
