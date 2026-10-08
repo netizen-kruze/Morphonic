@@ -10,6 +10,12 @@ Built to the same rules and in the same style as Chatterbox: one file to
 download, no installer, no accounts, no telemetry, plain logs that say what
 happened.
 
+One codebase, two platforms: the same source builds the Windows and the
+Linux release, and every release carries both. On GitHub the project is
+filed under the topics `linux`, `windows`, `fedora`, `voice-changer`, `rvc`,
+`voice-conversion`, `real-time`, `onnxruntime`, `dotnet`, `directml`, `cuda`
+and `virtual-microphone`.
+
 ![Morphonic converting a voice](docs/screenshot.png)
 
 ## Download
