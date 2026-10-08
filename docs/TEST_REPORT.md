@@ -126,7 +126,10 @@ DevTools hook: the Voice screen with the sample voice running on the default
 devices (CPU, 250 ms blocks), the "Converting" status with its lag and
 pass-time readout, the "keeping up" pace chip, and the toasts cleared so
 nothing covers the layout. The earlier image showed the idle screen behind
-three first-run toasts and the pre-fix tray glyph.
+three first-run toasts and the pre-fix tray glyph. The same image was added
+to the v1.0.0 release notes under the title line, served from the
+repository at the commit that added it so the notes keep showing this exact
+picture.
 
 ## What the walkthrough exercised
 
