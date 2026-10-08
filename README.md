@@ -14,7 +14,8 @@ happened.
 
 ## Download
 
-Get the latest release from the **Releases** page of this repository:
+Get the latest release from the **Releases** page:
+<https://github.com/netizen-kruze/Morphonic/releases/latest>
 
 - `Morphonic-<version>-win-x64.zip` — a single `Morphonic.exe`, no installer. The exe
   is not code-signed, so Windows SmartScreen may warn on first run — choose
