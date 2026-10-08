@@ -16,7 +16,7 @@ namespace Morphonic;
 public static class UpdateCheck
 {
     // The GitHub repository the releases are published from.
-    public const string Repo = "";
+    public const string Repo = "netizen-kruze/Morphonic";
 
     // Where the check goes. --update-feed <url> (a test hook) points it at
     // a local server serving a release document.
