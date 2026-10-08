@@ -4,6 +4,11 @@ publish/
 publish-*/
 # release files go to GitHub Releases, never into the repository
 releases/
+# driver build output; the package the app embeds is produced by build.ps1 -Driver
+driver/MorphonicCable/x64/
+driver/MorphonicCable/Debug/
+driver/MorphonicCable/Release/
+driver/package/
 *.user
 .vs/
 TestResults/

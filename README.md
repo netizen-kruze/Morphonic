@@ -82,11 +82,16 @@ Other programs need the converted voice as a **microphone**:
   Discord, OBS or any other program. Leave **Output** on *System default*
   for this — or pick **Morphonic-Voice** explicitly. Needs PipeWire with
   `pipewire-pulse` (the Fedora default).
-- **Windows:** Windows has no built-in virtual cable, so install a free one
-  such as **VB-CABLE** (vb-audio.com/Cable), restart, then set Morphonic's
-  **Output** to **CABLE Input** and pick **CABLE Output** as the microphone
-  in the other program. Morphonic points this out with a note the first time it
-  sees no cable installed.
+- **Windows:** **Settings → Virtual microphone → Install** adds Morphonic's
+  own virtual audio cable (one administrator prompt, stays installed until
+  you remove it there): an output **Morphonic Voice** that the app plays
+  into by itself, and an input **Morphonic Microphone** that Discord, VRChat,
+  OBS and games pick as their microphone. Windows only loads a driver
+  Microsoft has signed, so this works once a release carries the signed
+  package (`driver/README.md` has the publisher's steps). Until then, or on
+  a build without the driver, a third-party cable such as VB-CABLE works
+  the same way: set **Output** to **CABLE Input** and pick **CABLE Output**
+  in the other program.
 
 **Hearing yourself (sidetone).** When the voice goes into a cable or the
 virtual microphone you would hear nothing of it, so **Hear yourself** on

@@ -51,6 +51,9 @@ internal static class Program
         if (args.Contains("--install")) return Report(LinuxInstaller.Install());
         if (args.Contains("--uninstall")) return Report(LinuxInstaller.Uninstall(purge: args.Contains("--purge")));
         if (ArgValue(args, "--data-dir") is { } dataDir) AppPaths.DataDir = Path.GetFullPath(dataDir);
+        // The elevated half of Settings -> Virtual microphone (Windows):
+        // started by the running app with "runas"; the outcome goes to --log.
+        if (args.Contains("--install-virtual-mic") || args.Contains("--remove-virtual-mic")) return VirtualMicElevated(args);
         // Test hook: the update check against a local server instead of github.com.
         if (ArgValue(args, "--update-feed") is { } feed) UpdateCheck.FeedUrl = feed;
         if (args.Contains("--bench")) return RunBench();
@@ -269,7 +272,9 @@ internal static class Program
         "  Morphonic --uninstall [--purge]        (Linux) remove that install; --purge also removes settings, voices and models\n" +
         "  --data-dir <dir>                   use another data folder (tools/smoke.*)\n" +
         "  --debug-port <n>                   (Windows) expose the page over the DevTools protocol for tools/ui_walkthrough.py\n" +
-        "  --update-feed <url>                point Settings > Check for updates at another release document (tests)\n";
+        "  --update-feed <url>                point Settings > Check for updates at another release document (tests)\n" +
+        "  --install-virtual-mic <dir>        (Windows, administrator) install the Morphonic Voice driver package in <dir>; Settings does this for you\n" +
+        "  --remove-virtual-mic               (Windows, administrator) remove it\n";
 
     private static int Report(LinuxInstaller.Result result)
     {
@@ -396,6 +401,25 @@ internal static class Program
         ctrl.HandleMessage("runBench", new JObject());
         if (!done.Wait(TimeSpan.FromMinutes(15))) { Console.WriteLine("speed check timed out"); return 1; }
         return code;
+    }
+
+    private static int VirtualMicElevated(string[] args)
+    {
+        if (!OperatingSystem.IsWindows()) return 2;
+        bool ok; string message;
+        try
+        {
+            (ok, message) = args.Contains("--install-virtual-mic")
+                ? WindowsVirtualMic.InstallElevated(ArgValue(args, "--install-virtual-mic") ?? "")
+                : WindowsVirtualMic.RemoveElevated();
+        }
+        catch (Exception ex) { ok = false; message = ex.Message; }
+        if (ArgValue(args, "--log") is { } log)
+        {
+            try { File.WriteAllText(log, message); } catch { }
+        }
+        else Console.WriteLine(message);
+        return ok ? 0 : 1;
     }
 
     private static string? ArgValue(string[] args, string name)

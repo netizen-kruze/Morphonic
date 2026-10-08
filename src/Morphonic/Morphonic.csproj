@@ -90,6 +90,11 @@
     <!-- Weightless ONNX graphs and recipes for the models the app
          assembles itself from the original checkpoints (ModelAssembler;
          made by tools/make_templates.py). -->
+    <!-- Windows virtual microphone driver, when built (build.ps1 -Driver):
+         driver/package/MorphonicCable.{inf,sys,cat} -> driver/... -->
+    <EmbeddedResource Include="../../driver/package/MorphonicCable.inf;../../driver/package/MorphonicCable.sys;../../driver/package/MorphonicCable.cat" Condition="Exists('../../driver/package/MorphonicCable.sys')">
+      <LogicalName>driver/%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
     <EmbeddedResource Include="Assets/*.template;Assets/*.recipe.json">
       <LogicalName>assets/%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>

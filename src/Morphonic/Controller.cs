@@ -47,6 +47,7 @@ public sealed class VoiceController : IDisposable
     private long _lastProgressSentAt;
     private int _benchRunning;
     private int _checkingUpdate;
+    private volatile bool _virtualMicBusy;
     private string _converting = "";
 
     private readonly System.Threading.Timer _meterTimer;
@@ -269,6 +270,30 @@ public sealed class VoiceController : IDisposable
 
             case "openUrl":
                 OpenUrl(msg["url"]?.ToString() ?? "");
+                break;
+
+            // Windows: install / remove Morphonic's virtual microphone driver
+            // (one administrator prompt, run by a second copy of this exe).
+            case "installVirtualMic":
+            case "removeVirtualMic":
+                {
+                    if (!OperatingSystem.IsWindows()) break;
+                    if (_virtualMicBusy) { _send("toast", new { ok = false, msg = "The virtual microphone is already being changed" }); break; }
+                    if (IsRunning) { _send("toast", new { ok = false, msg = "Stop the voice first" }); break; }
+                    bool install = msg["action"]?.ToString() == "installVirtualMic";
+                    _virtualMicBusy = true;
+                    SendDevices();
+                    _ = Task.Run(() =>
+                    {
+                        var (ok, message) = install ? WindowsVirtualMic.Install() : WindowsVirtualMic.Remove();
+                        _virtualMicBusy = false;
+                        if (ok && install) lock (_settingsLock) { _settings.VirtualMic = true; _settings.Save(); }
+                        AudioDevices.Invalidate();
+                        BootLog.Append($"virtual microphone {(install ? "install" : "remove")} {(ok ? "ok" : "failed")}: {message}");
+                        _send("toast", new { ok, msg = (install ? "Virtual microphone: " : "Virtual microphone removed: ") + message });
+                        SendDevices();
+                    });
+                }
                 break;
 
             // Settings -> About: one request to the release feed, on the
@@ -581,7 +606,7 @@ public sealed class VoiceController : IDisposable
     private static bool IsVirtualOutput(AudioDevice d) =>
         d.Name.Contains("CABLE Input", StringComparison.OrdinalIgnoreCase) ||
         d.Name.Contains("VB-Audio", StringComparison.OrdinalIgnoreCase) ||
-        (VirtualMic.Supported && d.Id == VirtualMic.SinkName);
+        VirtualMic.IsVirtualOutput(d);
 
     private void RestartIfRunning() =>
         RunOffUiThread(() =>
@@ -710,11 +735,12 @@ public sealed class VoiceController : IDisposable
         var outputs = AudioDevices.Outputs();
         int inIdx = AudioDevices.Resolve(inputs, _settings.InputDeviceIndex, _settings.InputDeviceName);
         int outIdx = AudioDevices.Resolve(outputs, _settings.OutputDeviceIndex, _settings.OutputDeviceName);
-        // Linux with the virtual microphone on and no explicit output: play
-        // into the virtual sink, where other programs pick the voice up.
+        // Virtual microphone on and no explicit output: play into the
+        // virtual output (the PipeWire sink on Linux, the Morphonic Voice
+        // cable on Windows), where other programs pick the voice up.
         if (VirtualMic.Supported && _settings.VirtualMic && outIdx == 0)
         {
-            int vm = Array.FindIndex(outputs, d => d.Id == VirtualMic.SinkName);
+            int vm = Array.FindIndex(outputs, d => d.Id.Length > 0 && VirtualMic.IsVirtualOutput(d));
             if (vm > 0) outIdx = vm;
         }
 
@@ -1157,6 +1183,9 @@ public sealed class VoiceController : IDisposable
             hasCable = outputs.Any(d => d.Name.Contains("CABLE Input", StringComparison.OrdinalIgnoreCase)),
             virtualMic = _settings.VirtualMic,
             virtualMicStatus = VirtualMic.Status,
+            virtualMicInstalled = VirtualMic.Supported,
+            virtualMicPackage = OperatingSystem.IsWindows() && WindowsVirtualMic.PackageAvailable,
+            virtualMicBusy = _virtualMicBusy,
             pitch = _settings.PitchSemitones,
             speakerId = _settings.SpeakerId,
             blockMs = _settings.BlockMs,

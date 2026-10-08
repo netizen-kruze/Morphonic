@@ -18,9 +18,35 @@ param(
   # each) with the three model files inside. The folder is a models folder
   # the app filled: `publish\Morphonic.exe --fetch-models --data-dir X`
   # then X\models (the sample voice is found in X\voices).
-  [string]$Offline = ''
+  [string]$Offline = '',
+  # -Driver: build the Windows virtual-microphone driver (driver\MorphonicCable,
+  # Release x64, needs the WDK and the "Windows Driver Kit Build Tools" VS
+  # component) into driver\package\, which the app build then embeds. Only
+  # a package signed through Microsoft's Hardware Dev Center loads on
+  # users' machines (driver\README.md).
+  [switch]$Driver,
+  [switch]$DriverOnly
 )
 $ErrorActionPreference = 'Stop'
+if ($Driver -or $DriverOnly) {
+  $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+  $vs = & $vswhere -products * -latest -requires Component.Microsoft.Windows.DriverKit.BuildTools -property installationPath 2>$null
+  if (-not $vs) { $vs = & $vswhere -products * -latest -requires Component.Microsoft.Windows.DriverKit -property installationPath 2>$null }
+  if (-not $vs) { throw 'No Visual Studio with the Windows Driver Kit component (see driver\README.md).' }
+  $msbuild = Join-Path $vs 'MSBuild\Current\Bin\MSBuild.exe'
+  $dproj = Join-Path $PSScriptRoot 'driver\MorphonicCable\MorphonicCable.vcxproj'
+  Write-Host "==> Building the virtual microphone driver (Release, x64) with $msbuild" -ForegroundColor Cyan
+  & $msbuild $dproj /nologo /v:m /p:Configuration=Release /p:Platform=x64 /p:SignMode=Off
+  if ($LASTEXITCODE -ne 0) { throw 'driver build failed' }
+  $pkg = Join-Path $PSScriptRoot 'driver\package'
+  New-Item -ItemType Directory -Force $pkg | Out-Null
+  $built = Get-ChildItem (Join-Path $PSScriptRoot 'driver\MorphonicCable\x64\Release') -Recurse -Include 'MorphonicCable.inf', 'MorphonicCable.sys', 'MorphonicCable.cat' -ErrorAction SilentlyContinue
+  foreach ($f in $built) { Copy-Item $f.FullName (Join-Path $pkg $f.Name) -Force }
+  $have = Get-ChildItem $pkg | Select-Object -ExpandProperty Name
+  Write-Host "==> driver\package: $($have -join ', ')"
+  if ($have -notcontains 'MorphonicCable.sys') { throw 'the driver build produced no MorphonicCable.sys' }
+  if ($DriverOnly) { exit 0 }
+}
 $proj = Join-Path $PSScriptRoot 'src\Morphonic\Morphonic.csproj'
 [xml]$x = Get-Content $proj
 $ver = ($x.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1)

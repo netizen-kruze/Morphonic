@@ -18,17 +18,32 @@ public static class VirtualMic
     public const string SourceDescription = "Morphonic-Voice-Mic";
 
     private static readonly List<int> Modules = new();
-    public static string Status { get; private set; } = "not created";
+    private static string _status = "not created";
+    public static string Status
+    {
+        get => OperatingSystem.IsWindows() ? WindowsVirtualMic.Status : _status;
+        private set => _status = value;
+    }
 
-    public static bool Supported => OperatingSystem.IsLinux();
+    // Linux: always (PipeWire modules, created per run). Windows: once
+    // Morphonic's own cable driver is installed (WindowsVirtualMic).
+    public static bool Supported => OperatingSystem.IsLinux() || (OperatingSystem.IsWindows() && WindowsVirtualMic.Installed);
+
+    // The output whose audio other programs read as the microphone.
+    public static bool IsVirtualOutput(AudioDevice d) =>
+        OperatingSystem.IsWindows()
+            ? d.Name.Contains(WindowsVirtualMic.RenderName, StringComparison.OrdinalIgnoreCase)
+            : d.Id == SinkName;
 
     public static bool Exists() =>
+        OperatingSystem.IsWindows() ? WindowsVirtualMic.Installed :
         OperatingSystem.IsLinux() &&
         LinuxHost.Capture("pactl", new[] { "list", "short", "sinks" }).Contains(SinkName, StringComparison.Ordinal);
 
     public static bool Create(out string error)
     {
         error = "";
+        if (OperatingSystem.IsWindows()) { if (WindowsVirtualMic.Installed) return true; error = "the Morphonic virtual microphone driver is not installed (Settings → Virtual microphone)"; return false; }
         if (!Supported) { error = "virtual microphones are a Linux feature here"; return false; }
         if (Exists()) { Status = "present"; return true; }
         var sink = LinuxHost.Capture("pactl", new[]
@@ -56,6 +71,7 @@ public static class VirtualMic
 
     public static void Remove()
     {
+        if (!OperatingSystem.IsLinux()) return;   // the Windows driver is persistent
         foreach (var m in Modules)
             LinuxHost.Capture("pactl", new[] { "unload-module", m.ToString() });
         Modules.Clear();

@@ -191,14 +191,35 @@ The full walkthrough on the 1.0.1 exe: first run / models / voice 47 / 47,
 voices 23 / 23 (without any Python on the path), lifecycle 10 / 10,
 settings 10 / 10 — 90 / 90.
 
-**Not verified on this PC: a Windows virtual microphone.** Morphonic on
-Windows plays into a third-party cable (VB-CABLE's "CABLE Input"); other
-programs then read "CABLE Output" as their microphone. No cable driver is
-installed on the test machine, so that leg is unverified here; the Linux
-virtual microphone was verified in the Fedora run. A driven check
-(`mic_check.py`: choose CABLE Input as the output through the real control,
-start the voice, record CABLE Output as Discord would, measure the level)
-is ready to run once VB-CABLE is installed.
+**A Windows virtual microphone of Morphonic's own.** Other programs can
+use the converted voice only through a microphone device, and on Windows
+a device is a kernel driver. Rather than require a second download
+(VB-CABLE), the app now carries its own cable driver,
+`driver/MorphonicCable` (forked from the MIT AudioMirror driver, itself
+from Microsoft's sysvad sample): an output "Morphonic Voice" whose audio
+appears on an input "Morphonic Microphone". Settings → Virtual microphone
+gained Install / Remove on Windows: the app unpacks the embedded package
+and runs a second copy of itself elevated (one administrator prompt) that
+creates the root-enumerated device and installs the driver through
+SetupAPI, the same sequence as `devcon install`; Remove deletes the device
+and the package from the driver store. With the virtual microphone on and
+Output on System default the voice is routed into Morphonic Voice, and
+*Hear yourself* (Auto) treats it as a virtual output.
+
+What is verified here: the app side compiles and embeds a package when
+`driver/package/` holds one; the pnputil listing parser has a unit test;
+the Settings row shows Install / Remove / "this build carries no driver
+package" as appropriate. What is **not** verified: loading the driver.
+Windows loads a kernel driver only when Microsoft has signed it through
+the Hardware Dev Center (EV certificate + attestation signing,
+`driver/README.md`), a step only the publisher can take; this test
+machine keeps Secure Boot and signature enforcement as they are, so an
+unsigned local build cannot be exercised end to end. The Linux virtual
+microphone was verified in the Fedora run. Until a signed package ships, a
+third-party cable (VB-CABLE) remains the Windows route, and
+`mic_check.py` (choose CABLE Input through the real control, start the
+voice, record CABLE Output as Discord would, measure the level) is ready
+for a machine that has one.
 
 ## What the walkthrough exercised
 

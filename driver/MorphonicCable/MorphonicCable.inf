@@ -1,0 +1,148 @@
+;
+; MorphonicCable.inf - Morphonic's virtual audio cable: a render endpoint
+; ("Morphonic Voice") whose audio appears on a capture endpoint
+; ("Morphonic Microphone") that other programs open as a microphone.
+; Derived from AudioMirror (MIT, Jannes Peters), itself from Microsoft's
+; sysvad sample.
+;
+
+[Version]
+Signature="$WINDOWS NT$"
+Class = Media
+ClassGuid = {4d36e96c-e325-11ce-bfc1-08002be10318}
+Provider=%OrganizationName% ; defined later in Strings section
+CatalogFile=MorphonicCable.cat
+DriverVer= ; set DriverVer in stampinf property pages
+DriverPackageDisplayName=%DriverDisplayName%
+
+[DestinationDirs]
+DefaultDestDir = 12 ; DIRID_DRIVERS
+MorphonicCable_Device_CoInstaller_CopyFiles = 11
+
+; ================= Class section =====================
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+MorphonicCable.sys  = 1,,
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%OrganizationName%=Standard,NT$ARCH$
+
+[Standard.NT$ARCH$]
+%MorphonicCable.DeviceDesc%=MorphonicCable_Device, Root\MorphonicCable
+
+[MorphonicCable_Device.NT]
+Include=ks.inf,wdmaudio.inf
+Needs=KS.Registration, WDMAUDIO.Registration
+CopyFiles=Drivers_Dir
+
+[Drivers_Dir]
+MorphonicCable.sys
+
+;-------------- Service installation
+[MorphonicCable_Device.NT.Services]
+AddService = MorphonicCable,%SPSVCINST_ASSOCSERVICE%, MorphonicCable_Service_Inst
+
+; -------------- MorphonicCable driver install sections
+[MorphonicCable_Service_Inst]
+DisplayName    = %MorphonicCable.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\MorphonicCable.sys
+
+
+; ------------- Capture device
+[MorphonicCable.Interface.WaveCaptureTemplate]
+AddReg=MorphonicCable.Interface.WaveCaptureTemplate.AddReg
+
+[MorphonicCable.Interface.WaveCaptureTemplate.AddReg]
+HKR,,CLSID,,%KSProxy.CLSID%
+HKR,,FriendlyName,,%MorphonicCable.WaveCapture.FriendlyName%
+
+[MorphonicCable.Interface.TopologyCaptureTemplate]
+AddReg=MorphonicCable.Interface.TopologyCaptureTemplate.AddReg
+
+[MorphonicCable.Interface.TopologyCaptureTemplate.AddReg]
+HKR,,CLSID,,%KSProxy.CLSID%
+HKR,,FriendlyName,,%MorphonicCable.TopologyCapture.FriendlyName%
+; The following lines opt-in to pull mode.
+HKR,EP\0,%PKEY_AudioEndpoint_Association%,,%KSNODETYPE_ANY%
+HKR,EP\0,%PKEY_AudioEndpoint_Supports_EventDriven_Mode%,0x00010001,0x1
+
+; ------------- Render device
+[MorphonicCable.Interface.WaveRenderTemplate]
+AddReg=MorphonicCable.Interface.WaveRenderTemplate.AddReg
+[MorphonicCable.Interface.WaveRenderTemplate.AddReg]
+HKR,,CLSID,,%KSProxy.CLSID%
+HKR,,FriendlyName,,%MorphonicCable.WaveRender.FriendlyName%
+
+[MorphonicCable.Interface.TopologyRenderTemplate]
+AddReg=MorphonicCable.Interface.TopologyRenderTemplate.AddReg
+[MorphonicCable.Interface.TopologyRenderTemplate.AddReg]
+HKR,,CLSID,,%KSProxy.CLSID%
+HKR,,FriendlyName,,%MorphonicCable.TopologyRender.FriendlyName%
+; The following lines opt-in to pull mode.
+HKR,EP\0,%PKEY_AudioEndpoint_Association%,,%KSNODETYPE_ANY%
+HKR,EP\0,%PKEY_AudioEndpoint_Supports_EventDriven_Mode%,0x00010001,0x1
+
+
+[MorphonicCable_Device.NT.Interfaces]
+; -------------- Interface template definition
+; Capture
+AddInterface=%KSCATEGORY_AUDIO%,    %KSNAME_WaveCapture%, MorphonicCable.Interface.WaveCaptureTemplate
+AddInterface=%KSCATEGORY_REALTIME%, %KSNAME_WaveCapture%, MorphonicCable.Interface.WaveCaptureTemplate
+AddInterface=%KSCATEGORY_CAPTURE%,  %KSNAME_WaveCapture%, MorphonicCable.Interface.WaveCaptureTemplate
+AddInterface=%KSCATEGORY_AUDIO%,    %KSNAME_TopologyCapture%, MorphonicCable.Interface.TopologyCaptureTemplate
+AddInterface=%KSCATEGORY_TOPOLOGY%, %KSNAME_TopologyCapture%, MorphonicCable.Interface.TopologyCaptureTemplate
+
+; Render
+AddInterface=%KSCATEGORY_AUDIO%, %KSNAME_WaveRender%, MorphonicCable.Interface.WaveRenderTemplate
+AddInterface=%KSCATEGORY_RENDER%, %KSNAME_WaveRender%, MorphonicCable.Interface.WaveRenderTemplate
+AddInterface=%KSCATEGORY_REALTIME%, %KSNAME_WaveRender%, MorphonicCable.Interface.WaveRenderTemplate
+AddInterface=%KSCATEGORY_AUDIO%, %KSNAME_TopologyRender%, MorphonicCable.Interface.TopologyRenderTemplate
+AddInterface=%KSCATEGORY_TOPOLOGY%, %KSNAME_TopologyRender%, MorphonicCable.Interface.TopologyRenderTemplate
+
+[MorphonicCable_Device.NT.Wdf]
+KmdfService =  MorphonicCable, MorphonicCable_wdfsect
+[MorphonicCable_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+[Strings]
+SPSVCINST_ASSOCSERVICE= 0x00000002
+OrganizationName="Morphonic"
+DriverDisplayName="Morphonic Voice virtual microphone"
+DiskName="Morphonic driver files"
+MorphonicCable.DeviceDesc="Morphonic Voice"
+MorphonicCable.SVCDESC="Morphonic Voice virtual audio cable"
+
+MorphonicCable.WaveCapture.FriendlyName="Morphonic Microphone"
+MorphonicCable.TopologyCapture.FriendlyName="Morphonic Microphone topology"
+
+MorphonicCable.WaveRender.FriendlyName="Morphonic Voice"
+MorphonicCable.TopologyRender.FriendlyName="Morphonic Voice topology"
+
+;non-localizable
+KSNAME_WaveCapture="WaveCaptureTemplate"
+KSNAME_TopologyCapture="TopologyCaptureTemplate"
+
+KSNAME_WaveRender="WaveRenderTemplate"
+KSNAME_TopologyRender="TopologyRenderTemplate"
+
+KSNODETYPE_ANY   = "{00000000-0000-0000-0000-000000000000}"
+
+KSProxy.CLSID="17CCA71B-ECD7-11D0-B908-00A0C9223196"
+KSCATEGORY_AUDIO="{6994AD04-93EF-11D0-A3CC-00A0C9223196}"
+KSCATEGORY_RENDER="{65E8773E-8F56-11D0-A3B9-00A0C9223196}"
+KSCATEGORY_CAPTURE="{65E8773D-8F56-11D0-A3B9-00A0C9223196}"
+KSCATEGORY_REALTIME ="{EB115FFC-10C8-4964-831D-6DCB02E6F23F}"
+KSCATEGORY_TOPOLOGY = "{DDA54A40-1E4C-11D1-A050-405705C10000}"
+
+PKEY_AudioEndpoint_Association               = "{1DA5D803-D492-4EDD-8C23-E0C0FFEE7F0E},2"
+PKEY_AudioEndpoint_Supports_EventDriven_Mode = "{1DA5D803-D492-4EDD-8C23-E0C0FFEE7F0E},7"

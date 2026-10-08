@@ -120,9 +120,17 @@ Simulate a fresh machine: quit Morphonic, rename the data folder away
       while the output is a real device, on (default output) as soon as the
       output is CABLE Input / the virtual microphone; `last_boot.log`'s
       "voice started" line ends with "sidetone: …".
-- [ ] Windows, with VB-CABLE installed: Output = CABLE Input, then Discord /
-      VRChat / OBS with "CABLE Output" as the microphone hears the converted
-      voice, and you hear it too through Auto sidetone.
+- [ ] Windows, Settings → Virtual microphone → Install (a build with the
+      signed driver package): one administrator prompt, then "Morphonic
+      Voice" (output) and "Morphonic Microphone" (input) exist in Sound
+      settings; with Output on System default the voice plays into Morphonic
+      Voice, Discord / VRChat / OBS with "Morphonic Microphone" hear the
+      converted voice, Hear yourself (Auto) plays it to you as well; Remove
+      takes both away. On a build whose package is unsigned, Install ends
+      with Windows' signature refusal shown in the toast and nothing changed.
+- [ ] Windows, with VB-CABLE installed instead: Output = CABLE Input, then
+      the other program with "CABLE Output" as the microphone hears the
+      converted voice, and you hear it too through Auto sidetone.
 - [ ] Device unplugged while idle → Rescan (changing a device) lists the new
       set; a saved device that is gone resolves to System default.
 

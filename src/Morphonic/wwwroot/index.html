@@ -162,6 +162,8 @@
         <div class="setrow"><span class="grow"><span class="name">Acceleration</span><div class="desc" id="accelDesc">Auto uses GPU acceleration when it is installed and this machine can run it; CPU forces the processor. Applies after a restart.</div></span>
           <span class="seg" id="segAccel"><button data-v="auto">Auto</button><button data-v="gpu">GPU</button><button data-v="cpu">CPU</button></span></div>
         <div class="setrow last" id="rowVirtualMic"><span class="grow"><span class="name">Virtual microphone</span><div class="desc" id="virtualMicDesc">Creates "Morphonic-Voice-Mic", an input other programs can pick, and plays the voice into it. Needs PipeWire (pipewire-pulse). Applies after a restart.</div></span>
+          <button class="chipbtn amber" id="btnInstallVirtualMic" hidden>Install</button>
+          <button class="chipbtn danger" id="btnRemoveVirtualMic" hidden>Remove</button>
           <span class="toggle" id="tglVirtualMic" role="switch" aria-checked="false" tabindex="0"><i></i><b></b></span></div>
       </div>
       <div class="group">

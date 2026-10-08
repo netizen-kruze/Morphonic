@@ -98,7 +98,7 @@ function renderDevices(p) {
   if (currentView() === 'voice') showView('voice');
   updateStartButton();
   $('trayNote').innerHTML = p.platform === 'windows' ? '× hides to tray;<br>the voice keeps running' : '× quits Morphonic;<br>minimize to keep going';
-  $('rowVirtualMic').hidden = p.platform !== 'linux';
+  $('rowVirtualMic').hidden = false;
   $('groupDesktop').hidden = p.platform !== 'linux';
 
   const fill = (sel, names, selected, withOff) => {
@@ -124,7 +124,25 @@ function renderDevices(p) {
   seg('segGate', p.noiseGateDb); seg('segRms', p.rmsMixRate); seg('segGain', p.outputGainDb);
   document.querySelectorAll('#segAccel button').forEach(b => b.classList.toggle('on', b.dataset.v === p.acceleration));
   setToggle($('tglVirtualMic'), p.virtualMic);
-  $('virtualMicDesc').textContent = 'Creates "Morphonic-Voice-Mic", an input other programs can pick, and plays the voice into it. Needs PipeWire (pipewire-pulse). Applies after a restart. Status: ' + (p.virtualMicStatus || 'unknown') + '.';
+  if (p.platform === 'windows') {
+    // Morphonic's own cable driver: installed once, then "Morphonic Voice"
+    // (output) and "Morphonic Microphone" (input) exist for every program.
+    $('rowVirtualMic').hidden = false;
+    $('tglVirtualMic').hidden = true;
+    $('btnInstallVirtualMic').hidden = p.virtualMicInstalled || !p.virtualMicPackage;
+    $('btnRemoveVirtualMic').hidden = !p.virtualMicInstalled;
+    $('btnInstallVirtualMic').disabled = $('btnRemoveVirtualMic').disabled = !!p.virtualMicBusy;
+    $('btnInstallVirtualMic').textContent = p.virtualMicBusy ? 'Installing…' : 'Install';
+    $('virtualMicDesc').textContent = p.virtualMicInstalled
+      ? 'Installed: other programs see "Morphonic Microphone" as a microphone. Leave Output on System default and the voice plays into "Morphonic Voice" by itself; Hear yourself (Auto) lets you listen along.'
+      : p.virtualMicPackage
+        ? 'Adds "Morphonic Voice" (an output) and "Morphonic Microphone" (an input other programs can pick) with Morphonic\'s own driver. One administrator prompt; stays installed until removed here.'
+        : 'This build carries no driver package, so no virtual microphone can be installed from it. With VB-CABLE installed instead, pick "CABLE Input" as the output.';
+  } else {
+    $('tglVirtualMic').hidden = false;
+    $('btnInstallVirtualMic').hidden = $('btnRemoveVirtualMic').hidden = true;
+    $('virtualMicDesc').textContent = 'Creates "Morphonic-Voice-Mic", an input other programs can pick, and plays the voice into it. Needs PipeWire (pipewire-pulse). Applies after a restart. Status: ' + (p.virtualMicStatus || 'unknown') + '.';
+  }
   $('accelDesc').textContent = `Auto uses GPU acceleration when it is installed and this machine can run it; CPU forces the processor. Applies after a restart. Now: ${p.accelStatus || p.accelActive}.`;
   const sp = $('selSpeaker');
   sp.innerHTML = Array.from({ length: 16 }, (_, i) => `<option value="${i}" ${i === p.speakerId ? 'selected' : ''}>${i}</option>`).join('');
@@ -470,6 +488,8 @@ segSend('segGate', 'noiseGateDb', v => parseInt(v, 10));
 segSend('segRms', 'rmsMixRate', v => parseFloat(v));
 segSend('segGain', 'outputGainDb', v => parseInt(v, 10));
 segSend('segAccel', 'acceleration', v => v);
+$('btnInstallVirtualMic').addEventListener('click', () => send({ action: 'installVirtualMic' }));
+$('btnRemoveVirtualMic').addEventListener('click', () => send({ action: 'removeVirtualMic' }));
 toggleHandler($('tglVirtualMic'), () => {
   if (!dev) return;
   dev.virtualMic = !dev.virtualMic;
