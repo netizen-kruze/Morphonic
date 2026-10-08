@@ -110,6 +110,15 @@ way: the first build sent the answer with capitalised field names the page
 did not read. `build.ps1` / `build.sh` now also write
 `releases/SHA256SUMS.txt` for the release page.
 
+Against the live feed: the project was published at
+https://github.com/netizen-kruze/Morphonic and release **v1.0.0** created
+from the `main` commit the four files were built from, with the four files
+and `SHA256SUMS.txt` attached (each upload's size checked against the local
+file). While the release was still a draft the shipped exe reported "Could
+not check: no release has been published yet" with a note in `error.log`;
+once published, the same exe reported "You have the latest version (1.0.0)"
+and `last_boot.log` got "update check: 1.0.0 is the latest".
+
 ## What the walkthrough exercised
 
 Every check clicks the real buttons and reads the real page, the data
