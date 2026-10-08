@@ -158,6 +158,8 @@ button:focus-visible,select:focus-visible,input:focus-visible,.toggle:focus-visi
   border:1px solid var(--brd-soft);border-radius:9px;padding:11px 14px;
 }
 .row.active{border-color:var(--amber-deep)}
+@keyframes rowflash{0%,60%{box-shadow:0 0 0 2px var(--amber);background:var(--bg-hover)}100%{box-shadow:none}}
+.row.flash{animation:rowflash 2.6s ease-out}
 .row .name{font:500 13.5px 'IBM Plex Sans';color:var(--tx)}
 .row .uid,.row .meta{font:400 11px var(--mono);color:var(--tx3)}
 .row .grow{flex:1;min-width:0}

@@ -131,6 +131,75 @@ to the v1.0.0 release notes under the title line, served from the
 repository at the commit that added it so the notes keep showing this exact
 picture.
 
+## 1.0.1 — the voices workflow, audited and reworked
+
+The hand-out of 1.0.0 surfaced the one thing the app is for: getting a
+voice and speaking with it was not obvious. The installed app's
+`last_boot.log` showed the sequence: a Hugging Face download of
+`binant/SpongeBob_SquarePants__RVC_v2_/model.pth` arrived as a voice called
+"model" (every library names its checkpoint `model.pth`), the library list
+sat above the search results out of view, the toast said "press Convert"
+although conversion is automatic, and the same file was downloaded twice
+because nothing said it had arrived. Changes, all driven through the real
+window afterwards:
+
+- **Two halves on the Voices screen.** *My voices* (the library: Use /
+  Delete / Open folder, with the active voice marked) opens first;
+  *Get voices* holds every way in: Find voices on Hugging Face, the sample
+  voice (moved here from the Models screen), Import voice… and the drop
+  zone, and the library links. A *Get voices…* button in the library
+  header and the tab control switch between them.
+- **Names.** A generic checkpoint name (`model.pth`, `G_2333.pth`,
+  `pytorch_model.pth`…) is replaced by the name of where it came from: the
+  repository, the zip, or the folder it was picked from, plus a sub-folder
+  when a repository holds several ("Pack Alice", "Pack Bob"). A
+  descriptive file name is kept. The file list under Show files says which
+  name each file will get.
+- **Arrival.** A downloaded or dropped voice is converted on its own and,
+  when ready, becomes the active voice (if a voice is running the toast
+  asks for Use instead); the page switches to My voices and flashes the
+  row into view. The Hub button turns into *Use*, and pressing it for a
+  voice already in the library chooses it without downloading again.
+
+Verified on the 1.0.1 exe: unit tests 56 / 56 (naming rules, zip naming);
+the real download flow against Hugging Face 11 / 11 (the file list shows
+"model.pth → SpongeBob SquarePants RVC v2.pth", the voice appears under
+that name, converts, becomes active, the row is flashed, no file called
+`model.*` in the library, Use again makes no second download, and *Start
+voice* runs it at 32 kHz with nothing in `error.log`); the two-tab layout
+9 / 9 (opens on My voices, Get voices holds search / sample / import /
+drop zone, the Models screen no longer lists voices).
+
+**Sidetone.** The Settings "Monitor" output became **Hear yourself** on
+the Voice screen, beside Microphone and Output: *Auto* (the default) plays
+the converted voice on the system default output whenever the main output
+is a virtual cable (VB-CABLE on Windows, the virtual microphone on Linux),
+where the speaker would otherwise hear nothing; *Off*; or a named device.
+`last_boot.log`'s "voice started" line now ends with `sidetone: …`.
+Driven check 9 / 9: the control with Auto / Off / devices, Auto silent on a
+real output, a chosen device opening a second WASAPI output during a live
+session, the choice saved and Off saved as off rather than auto.
+
+**Raw training generators.** A `G_*.pth` / `f0G*.pth` from training (the
+generator under `model` with the optimizer state) is now refused in-app
+with a message naming RVC WebUI's / Applio's export step, instead of being
+handed to the Python tool, which without PyTorch produced a traceback.
+The no-PyTorch message for a genuinely non-standard checkpoint now points
+at Settings → Conversion → Install fallback converter.
+
+The full walkthrough on the 1.0.1 exe: first run / models / voice 47 / 47,
+voices 23 / 23 (without any Python on the path), lifecycle 10 / 10,
+settings 10 / 10 — 90 / 90.
+
+**Not verified on this PC: a Windows virtual microphone.** Morphonic on
+Windows plays into a third-party cable (VB-CABLE's "CABLE Input"); other
+programs then read "CABLE Output" as their microphone. No cable driver is
+installed on the test machine, so that leg is unverified here; the Linux
+virtual microphone was verified in the Fedora run. A driven check
+(`mic_check.py`: choose CABLE Input as the output through the real control,
+start the voice, record CABLE Output as Discord would, measure the level)
+is ready to run once VB-CABLE is installed.
+
 ## What the walkthrough exercised
 
 Every check clicks the real buttons and reads the real page, the data

@@ -69,31 +69,34 @@ public static class VoiceHub
     // Downloads repo/path into the voices folder (a .zip is unpacked),
     // verifying the size and, when known, the SHA-256. Returns the
     // library's import message.
-    public static async Task<(bool Ok, string Message)> DownloadAsync(string repo, string path, long size, string? sha256,
+    // The file lands under VoiceLibrary.LibraryName(repo, path): a
+    // "model.pth" takes the repository's name. Name is that library name.
+    public static async Task<(bool Ok, string Message, string Name)> DownloadAsync(string repo, string path, long size, string? sha256,
         Action<long, long> progress, CancellationToken ct)
     {
-        var name = System.IO.Path.GetFileName(path);
+        var name = VoiceLibrary.LibraryName(repo, path);
         var (ok, err) = VoiceLibrary.BeginImport(name, size);
-        if (!ok) return (false, err ?? "cannot start the download");
+        if (!ok) return (false, err ?? "cannot start the download", name);
         var partial = VoiceLibrary.ImportingPath(name);
         try
         {
             using var sha = SHA256.Create();
             long got = await Download.ResumableDownloadAsync(DownloadUrl(repo, path), partial, size, sha, n => progress(n, size), ct);
-            if (size > 0 && got != size) { VoiceLibrary.AbortImport(name); return (false, $"{name}: size mismatch ({got} vs {size} bytes)"); }
+            if (size > 0 && got != size) { VoiceLibrary.AbortImport(name); return (false, $"{name}: size mismatch ({got} vs {size} bytes)", name); }
             var hash = Convert.ToHexString(sha.Hash!).ToLowerInvariant();
-            if (sha256 != null && hash != sha256) { VoiceLibrary.AbortImport(name); return (false, $"{name}: SHA-256 mismatch — the download is corrupt"); }
-            return VoiceLibrary.EndImport(name);
+            if (sha256 != null && hash != sha256) { VoiceLibrary.AbortImport(name); return (false, $"{name}: SHA-256 mismatch — the download is corrupt", name); }
+            var (done, message) = VoiceLibrary.EndImport(name);
+            return (done, message, name);
         }
         catch (OperationCanceledException)
         {
             VoiceLibrary.AbortImport(name);
-            return (false, "download cancelled");
+            return (false, "download cancelled", name);
         }
         catch (Exception ex)
         {
             VoiceLibrary.AbortImport(name);
-            return (false, $"{name}: download failed — {ex.Message}");
+            return (false, $"{name}: download failed — {ex.Message}", name);
         }
     }
 

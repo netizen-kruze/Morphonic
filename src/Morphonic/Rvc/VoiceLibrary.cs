@@ -54,6 +54,39 @@ public static class VoiceLibrary
 
     public static bool Exists(string id) => id.Length > 0 && File.Exists(PathFor(id));
 
+    // Voice libraries name nearly every checkpoint "model.pth" or
+    // "G_2333.pth"; a voice named "model" tells the user nothing and the
+    // next download would replace it. A generic file name is replaced by
+    // the name of where it came from (the Hugging Face repository, or the
+    // zip it was inside), plus the sub-folder when the origin holds several.
+    private static readonly System.Text.RegularExpressions.Regex GenericStem =
+        new(@"^(model|pytorch_model|weights?|checkpoint|final|best|voice|rvc|output|generator|net_g|[gd](_?\d+)?|g_v\d+)$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    public static bool IsGenericName(string fileName) =>
+        GenericStem.IsMatch(Path.GetFileNameWithoutExtension(fileName).Trim());
+
+    // origin: "owner/Repo_Name" (Hub) or "Bundle Name" (a zip's stem);
+    // path: the file's path inside it. Returns the library file name.
+    public static string LibraryName(string origin, string path)
+    {
+        var fileName = Path.GetFileName(path.Replace('\\', '/'));
+        var ext = Path.GetExtension(fileName);
+        if (!IsGenericName(fileName)) return Sanitize(Path.GetFileNameWithoutExtension(fileName)) + ext;
+        var from = origin.Contains('/') ? origin[(origin.LastIndexOf('/') + 1)..] : origin;
+        var folder = path.Replace('\\', '/').Contains('/') ? Path.GetFileName(Path.GetDirectoryName(path.Replace('\\', '/'))!) : "";
+        var stem = Sanitize(from);
+        if (folder.Length > 0 && !IsGenericName(folder + ".x")) stem = Sanitize(from + " " + folder);
+        return (stem.Length > 0 ? stem : "voice") + ext;
+    }
+
+    private static string Sanitize(string s)
+    {
+        var chars = s.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? ' ' : c == '_' ? ' ' : c).ToArray();
+        var collapsed = System.Text.RegularExpressions.Regex.Replace(new string(chars), @"\s+", " ").Trim(' ', '.');
+        return collapsed.Length > 80 ? collapsed[..80].TrimEnd() : collapsed;
+    }
+
     // Copies a file the user picked into the library. The .index files
     // that come with RVC voices are not used (feature retrieval is not
     // part of this pipeline), so they are not copied.
@@ -66,14 +99,16 @@ public static class VoiceLibrary
             if (ext is not (".onnx" or ".pth"))
                 return (false, "pick an RVC voice: a .pth checkpoint (converted here), an .onnx export, or the .zip a voice library gave you");
             Directory.CreateDirectory(Dir);
-            var dest = Path.Combine(Dir, Path.GetFileName(sourcePath));
+            // "…\SpongeBob\model.pth" picked from disk becomes "SpongeBob.pth"
+            var parent = Path.GetFileName(Path.GetDirectoryName(Path.GetFullPath(sourcePath)) ?? "") ?? "";
+            var dest = Path.Combine(Dir, LibraryName(parent, Path.GetFileName(sourcePath)));
             if (string.Equals(Path.GetFullPath(dest), Path.GetFullPath(sourcePath), StringComparison.OrdinalIgnoreCase))
                 return (true, "that file is already in the voices folder");
             var tmp = dest + ".importing";
             File.Copy(sourcePath, tmp, overwrite: true);
             File.Move(tmp, dest, overwrite: true);
             return (true, ext == ".pth"
-                ? $"{Path.GetFileName(dest)} added — press Convert to build its ONNX voice"
+                ? $"{Path.GetFileName(dest)} added — converting to an ONNX voice now"
                 : $"{Path.GetFileName(dest)} added");
         }
         catch (Exception ex)
@@ -92,6 +127,10 @@ public static class VoiceLibrary
         {
             Directory.CreateDirectory(Dir);
             var added = new List<string>();
+            // "Voice.zip" holding "model.pth" gives a voice called "Voice".
+            var bundle = Path.GetFileName(zipPath);
+            if (bundle.EndsWith(".importing", StringComparison.OrdinalIgnoreCase)) bundle = bundle[..^".importing".Length];
+            bundle = Path.GetFileNameWithoutExtension(bundle);
             using (var zip = ZipFile.OpenRead(zipPath))
             {
                 foreach (var entry in zip.Entries)
@@ -99,17 +138,18 @@ public static class VoiceLibrary
                     var ext = Path.GetExtension(entry.Name).ToLowerInvariant();
                     if (entry.Name.Length == 0 || ext is not (".pth" or ".onnx")) continue;
                     if (entry.Length > 4L << 30) return (false, $"{entry.Name} in the zip is too large");
-                    var dest = Path.Combine(Dir, entry.Name);
+                    var name = LibraryName(bundle, entry.FullName);
+                    var dest = Path.Combine(Dir, name);
                     var tmp = dest + ".importing";
                     entry.ExtractToFile(tmp, overwrite: true);
                     File.Move(tmp, dest, overwrite: true);
-                    added.Add(entry.Name);
+                    added.Add(name);
                 }
             }
             if (added.Count == 0)
                 return (false, $"{Path.GetFileName(zipPath)} holds no .pth or .onnx voice (an .index file alone is not a voice)");
             bool needsConvert = added.Any(n => n.EndsWith(".pth", StringComparison.OrdinalIgnoreCase));
-            return (true, string.Join(", ", added) + (needsConvert ? " added — press Convert to build the ONNX voice" : " added"));
+            return (true, string.Join(", ", added) + (needsConvert ? " added — converting to an ONNX voice now" : " added"));
         }
         catch (Exception ex)
         {
@@ -180,7 +220,7 @@ public static class VoiceLibrary
             var dest = Path.Combine(Dir, name);
             File.Move(tmp, dest, overwrite: true);
             return (true, name.EndsWith(".pth", StringComparison.OrdinalIgnoreCase)
-                ? $"{name} added — press Convert to build its ONNX voice"
+                ? $"{name} added — converting to an ONNX voice now"
                 : $"{name} added");
         }
         catch (Exception ex)
@@ -299,7 +339,15 @@ public static class VoiceLibrary
         using (ck)
         {
             if (ck.Value("config") is not List<object?> config || ck.Value("weight") is not Dictionary<object, object?>)
-                return (false, "", false);   // a raw training generator, or another layout
+            {
+                // RVC's training checkpoints (G_2333.pth, f0G40k.pth) hold the
+                // generator under "model" with the optimizer state — not an
+                // exported voice. Say so instead of handing it to Python.
+                if (ck.Value("model") is Dictionary<object, object?> && (ck.Value("iteration") != null || ck.Value("optimizer") != null || ck.Value("learning_rate") != null))
+                    return (false, $"conversion failed: {Path.GetFileName(source)} is a raw training generator (the G_*.pth / f0G*.pth that training writes), not an exported voice — " +
+                                   "in RVC WebUI or Applio use \"Export\" / \"Extract small model\" to get the voice checkpoint, then import that", true);
+                return (false, "", false);   // another layout: the Python tool may know it
+            }
             var version = ck.Value("version") as string ?? "v1";
             if (version != "v2")
                 return (false, $"conversion failed: only RVC v2 voices (768-dim ContentVec) are supported; this is {version}", true);
@@ -377,7 +425,8 @@ public static class VoiceLibrary
                 ErrorLog.WriteNote("VoiceLibrary.Convert", $"exit {proc.ExitCode}\n{stdout}\n{err}");
                 var tail = LastLines(err.Length > 0 ? err : stdout, 3);
                 if (tail.Contains("No module named", StringComparison.Ordinal))
-                    tail += " — install the converter's packages: pip install -r " + Path.Combine(ToolsDir, "requirements-export.txt");
+                    return (false, "conversion failed: this checkpoint is not a standard RVC v2 voice, and the fallback converter's packages (PyTorch) are not installed — " +
+                                   "Settings → Conversion → Install fallback converter, then press Convert again");
                 return (false, "conversion failed: " + tail);
             }
             File.Move(tmp, dest, overwrite: true);

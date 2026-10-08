@@ -16,9 +16,14 @@ public class AppSettings
     public string InputDeviceName { get; set; } = "";
     public int OutputDeviceIndex { get; set; } = 0;
     public string OutputDeviceName { get; set; } = "";
-    // -1 = off. A second output that plays the converted voice back to you.
+    // Sidetone: a second output that plays the converted voice back to you.
+    // MonitorDeviceIndex >= 0 names the device; -1 with SidetoneAuto = the
+    // system default output whenever the main output is a virtual cable or
+    // the virtual microphone (where you would otherwise hear nothing);
+    // -1 without SidetoneAuto = off.
     public int MonitorDeviceIndex { get; set; } = -1;
     public string MonitorDeviceName { get; set; } = "";
+    public bool SidetoneAuto { get; set; } = true;
 
     // The voice: a file name in the voices folder ("" = none chosen yet).
     public string VoiceId { get; set; } = "";

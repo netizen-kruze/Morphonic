@@ -155,15 +155,20 @@ public sealed class VoiceController : IDisposable
                 RestartIfRunning();
                 break;
 
+            // Hear yourself (sidetone): "auto", "off", or an output index.
+            case "setSidetone":
             case "setMonitorDevice":
                 lock (_settingsLock)
                 {
-                    int idx = msg["index"]?.Value<int?>() ?? -1;
+                    var mode = msg["mode"]?.ToString() ?? "";
+                    int idx = mode == "auto" || mode == "off" ? -1 : msg["index"]?.Value<int?>() ?? -1;
                     _settings.MonitorDeviceIndex = idx;
                     _settings.MonitorDeviceName = idx < 0 ? "" : AudioDevices.NameAt(AudioDevices.Outputs(), idx);
+                    _settings.SidetoneAuto = mode == "auto" || (mode.Length == 0 && idx < 0 && _settings.SidetoneAuto);
                     _settings.Save();
                 }
                 SendSavedToast();
+                SendDevices();
                 RestartIfRunning();
                 break;
 
@@ -339,7 +344,15 @@ public sealed class VoiceController : IDisposable
                         try
                         {
                             var files = await VoiceHub.ListFilesAsync(repo, CancellationToken.None);
-                            _send("voiceFiles", new { repo, files = files.Select(f => new { path = f.Path, sizeBytes = f.SizeBytes, sha256 = f.Sha256 }) });
+                            _send("voiceFiles", new
+                            {
+                                repo,
+                                files = files.Select(f =>
+                                {
+                                    var name = VoiceLibrary.LibraryName(repo, f.Path);
+                                    return new { path = f.Path, sizeBytes = f.SizeBytes, sha256 = f.Sha256, libraryName = name, inLibrary = InLibrary(name) };
+                                }),
+                            });
                         }
                         catch (Exception ex) { _send("voiceFiles", new { repo, error = "could not list the files: " + ex.Message }); }
                     });
@@ -353,19 +366,33 @@ public sealed class VoiceController : IDisposable
                     var path = msg["path"]?.ToString() ?? "";
                     long size = msg["sizeBytes"]?.Value<long>() ?? 0;
                     var sha = msg["sha256"]?.ToString();
-                    var name = Path.GetFileName(path);
+                    var name = Path.GetFileName(path);   // the page tracks progress by the Hub file name
+                    var libraryName = VoiceLibrary.LibraryName(repo, path);
+                    var readyId = Path.GetFileNameWithoutExtension(libraryName) + ".onnx";
+                    if (VoiceLibrary.Exists(readyId))
+                    {
+                        // Already fetched and converted: just make it the voice.
+                        _send("voiceProgress", new { name, received = size, total = size, done = true, ok = true });
+                        Adopt(readyId, "is already in your library");
+                        break;
+                    }
                     _hubCts = new CancellationTokenSource();
                     var ct = _hubCts.Token;
                     _send("voiceProgress", new { name, received = 0L, total = size, done = false });
                     _ = Task.Run(async () =>
                     {
-                        var (ok, message) = await VoiceHub.DownloadAsync(repo, path, size, string.IsNullOrEmpty(sha) ? null : sha,
+                        var (ok, message, added) = await VoiceHub.DownloadAsync(repo, path, size, string.IsNullOrEmpty(sha) ? null : sha,
                             (got, total) => SendVoiceProgress(name, got, total), ct);
                         _hubCts?.Dispose();
                         _hubCts = null;
                         _send("voiceProgress", new { name, received = size, total = size, done = true, ok });
-                        _send("toast", new { ok, msg = message });
                         BootLog.Append($"voice download {(ok ? "ok" : "failed")}: {repo}/{path} — {message}");
+                        if (!ok) { _send("toast", new { ok = false, msg = message }); SendVoices(); return; }
+                        if (added.EndsWith(".onnx", StringComparison.OrdinalIgnoreCase)) { Adopt(added, "is in your library"); return; }
+                        // A checkpoint: converted next, adopted when ready.
+                        _wanted = added;
+                        _highlight = added;
+                        _send("toast", new { ok = true, msg = message });
                         SendVoices();
                         ConvertNextPending();
                     });
@@ -548,6 +575,14 @@ public sealed class VoiceController : IDisposable
         _settings.OutputDeviceName = AudioDevices.NameAt(AudioDevices.Outputs(), index);
     }
 
+    // An output other programs read as a microphone: a VB-CABLE on Windows,
+    // the app's own virtual sink on Linux. Playing into one, you hear
+    // nothing yourself unless sidetone is on.
+    private static bool IsVirtualOutput(AudioDevice d) =>
+        d.Name.Contains("CABLE Input", StringComparison.OrdinalIgnoreCase) ||
+        d.Name.Contains("VB-Audio", StringComparison.OrdinalIgnoreCase) ||
+        (VirtualMic.Supported && d.Id == VirtualMic.SinkName);
+
     private void RestartIfRunning() =>
         RunOffUiThread(() =>
         {
@@ -685,13 +720,21 @@ public sealed class VoiceController : IDisposable
 
         var input = AudioDevices.OpenInput(inIdx > 0 ? inputs[inIdx] : null);
         var output = AudioDevices.OpenOutput(outIdx > 0 ? outputs[outIdx] : null);
+        // Sidetone: the chosen device, or — automatically — the default
+        // output when the voice goes into a virtual cable / the virtual
+        // microphone, so the speaker hears what the other side hears.
         IAudioOutput? monitor = null;
+        bool intoCable = outIdx > 0 && IsVirtualOutput(outputs[outIdx]);
         if (_settings.MonitorDeviceIndex >= 0)
         {
             int monIdx = AudioDevices.Resolve(outputs, _settings.MonitorDeviceIndex, _settings.MonitorDeviceName);
             monitor = AudioDevices.OpenOutput(monIdx > 0 ? outputs[monIdx] : null);
-            _monitorRing = new RingBuffer(engine.SampleRate * 2);
         }
+        else if (_settings.SidetoneAuto && intoCable)
+        {
+            monitor = AudioDevices.OpenOutput(null);
+        }
+        if (monitor != null) _monitorRing = new RingBuffer(engine.SampleRate * 2);
         input.OnFailed += ex => SessionFailed(mine, "microphone capture failed — " + ex.Message, ex);
         output.OnFailed += ex => SessionFailed(mine, "playback failed — " + ex.Message, ex);
         if (monitor != null) monitor.OnFailed += ex => SessionFailed(mine, "monitor playback failed — " + ex.Message, ex);
@@ -719,7 +762,7 @@ public sealed class VoiceController : IDisposable
         _sessionLabel = $"{VoiceName()} · {OnnxHost.Label} · {converter.Voice.SampleRate / 1000} kHz";
         _sessionStartedAt = Environment.TickCount64;
         BootLog.Append($"voice started: {_sessionLabel}; in: {input.Backend}; out: {output.Backend}" +
-                       (monitor != null ? $"; monitor: {monitor.Backend}" : "") +
+                       (monitor != null ? $"; sidetone: {monitor.Backend}{(_settings.MonitorDeviceIndex < 0 ? " (auto)" : "")}" : "; sidetone: off") +
                        $"; block {engine.BlockFrames * 10} ms, context {engine.ExtraFrames * 10} ms, pipeline delay {engine.LatencyMs} ms");
         SendState();
     }
@@ -952,17 +995,50 @@ public sealed class VoiceController : IDisposable
         {
             _converting = "";
             var (ok, message) = t.IsCompletedSuccessfully ? t.Result : (false, "conversion failed: " + t.Exception?.GetBaseException().Message);
-            _send("toast", new { ok, msg = message });
-            if (ok && _settings.VoiceId.Length == 0)
+            var onnx = Path.GetFileNameWithoutExtension(id) + ".onnx";
+            bool wanted = ok && string.Equals(id, _wanted, StringComparison.OrdinalIgnoreCase);
+            if (wanted) _wanted = "";
+            if (wanted || (ok && _settings.VoiceId.Length == 0))
             {
-                var onnx = Path.GetFileNameWithoutExtension(id) + ".onnx";
-                lock (_settingsLock) { _settings.VoiceId = onnx; _settings.Save(); }
+                Adopt(onnx, "is ready");
             }
-            SendVoices();
-            SendDevices();
-            SendState();
+            else
+            {
+                _send("toast", new { ok, msg = message });
+                if (ok) _highlight = onnx;
+                SendVoices();
+                SendDevices();
+                SendState();
+            }
             if (auto) ConvertNextPending();
         });
+    }
+
+    // A voice the user asked for by name (a Find voices download) becomes
+    // the chosen voice as soon as it is usable, unless a session is
+    // running — then it is only pointed out, and Use switches to it.
+    private string _wanted = "";
+    private string _highlight = "";
+
+    private static bool InLibrary(string libraryName) =>
+        VoiceLibrary.Exists(libraryName) || VoiceLibrary.Exists(Path.GetFileNameWithoutExtension(libraryName) + ".onnx");
+
+    private void Adopt(string onnxId, string what)
+    {
+        var shown = Path.GetFileNameWithoutExtension(onnxId);
+        _highlight = onnxId;
+        if (IsRunning && !string.Equals(_settings.VoiceId, onnxId, StringComparison.OrdinalIgnoreCase))
+        {
+            _send("toast", new { ok = true, msg = $"{shown} {what} — press Use in the library to switch to it" });
+        }
+        else
+        {
+            lock (_settingsLock) { _settings.VoiceId = onnxId; _settings.Save(); }
+            _send("toast", new { ok = true, msg = $"{shown} {what} and is now the active voice — press Start voice" });
+        }
+        SendVoices();
+        SendDevices();
+        SendState();
     }
 
     private void ConvertNextPending()
@@ -1076,6 +1152,8 @@ public sealed class VoiceController : IDisposable
             savedInput = AudioDevices.Resolve(inputs, _settings.InputDeviceIndex, _settings.InputDeviceName),
             savedOutput = AudioDevices.Resolve(outputs, _settings.OutputDeviceIndex, _settings.OutputDeviceName),
             savedMonitor = _settings.MonitorDeviceIndex < 0 ? -1 : AudioDevices.Resolve(outputs, _settings.MonitorDeviceIndex, _settings.MonitorDeviceName),
+            sidetone = _settings.MonitorDeviceIndex >= 0 ? "device" : _settings.SidetoneAuto ? "auto" : "off",
+            outputIsVirtual = outputs.Select((d, i) => (d, i)).Any(x => x.i == AudioDevices.Resolve(outputs, _settings.OutputDeviceIndex, _settings.OutputDeviceName) && x.i > 0 && IsVirtualOutput(x.d)),
             hasCable = outputs.Any(d => d.Name.Contains("CABLE Input", StringComparison.OrdinalIgnoreCase)),
             virtualMic = _settings.VirtualMic,
             virtualMicStatus = VirtualMic.Status,
@@ -1109,6 +1187,7 @@ public sealed class VoiceController : IDisposable
             active = _settings.VoiceId,
             converting = _converting,
             folder = VoiceLibrary.Dir,
+            highlight = Interlocked.Exchange(ref _highlight, ""),   // shown once: the row to scroll to
         });
 
     private void SendModels()

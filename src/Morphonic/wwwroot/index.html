@@ -27,7 +27,7 @@
   <!-- Voice (main) -->
   <section class="view on" id="view-voice">
     <div class="stage" id="stage">
-      <div class="stage-idle" id="stageIdle">Pick a voice in <b>Voices</b>, choose your microphone and output below, then press <b>Start voice</b>. Your voice is converted on this machine and played to the output you choose — a virtual cable or the <b>Morphonic Voice</b> microphone for games and calls.</div>
+      <div class="stage-idle" id="stageIdle">Pick a voice in <b>Voices</b>, choose your microphone and output below, then press <b>Start voice</b>. Your voice is converted on this machine and played to the output you choose — a virtual cable or the <b>Morphonic Voice</b> microphone for games and calls. <b>Hear yourself</b> plays the converted voice to you as well, so you know what others hear.</div>
       <div class="stage-live" id="stageLive" hidden>
         <div class="voicename" id="liveVoice"></div>
         <div class="livemeta" id="liveMeta"></div>
@@ -52,6 +52,7 @@
       <span class="flex1"></span>
       <div class="ctl"><label for="selInput">Microphone</label><select id="selInput"></select></div>
       <div class="ctl"><label for="selOutput">Output</label><select id="selOutput"></select></div>
+      <div class="ctl"><label for="selSidetone">Hear yourself</label><select id="selSidetone" title="Sidetone: also play the converted voice to you, so you know what others hear"></select></div>
     </div>
   </section>
 
@@ -84,22 +85,42 @@
   <section class="view" id="view-voices">
     <div class="panel">
       <h2>Voices</h2>
-      <p class="sub">RVC v2 voices. An <b>.onnx</b> export loads as it is; a <b>.pth</b> checkpoint is converted inside the app the moment it arrives (a few seconds, nothing to install). The .index files that come with RVC voices are not used.</p>
-      <div class="hwbanner"><span class="dot"></span><span id="voiceFolderText">voices folder</span><span class="flex1"></span><button class="linkbtn" id="btnOpenVoices">Open folder</button></div>
-      <div class="dropzone" id="dropZone" aria-label="Drop voice files here">
-        <b>Drop voice files here</b>
-        <span>.pth, .onnx, or the .zip a voice library gave you — the .index file is ignored</span>
-        <span class="mono" id="dropStatus" hidden></span>
+      <div class="h-flex" style="margin:2px 0 14px">
+        <div class="seg" id="segVoices" role="tablist"><button class="on" data-vtab="mine" role="tab">My voices</button><button data-vtab="get" role="tab">Get voices</button></div>
+        <span class="sub small" style="margin:0" id="voicesHint">Pick a voice here, then press <b>Start voice</b> on the Voice screen.</span>
       </div>
-      <div class="group">
-        <h3 class="h-flex">Library <span class="flex1"></span><button class="chipbtn amber" id="btnImport">Import voice…</button></h3>
-        <div class="rows" id="voiceRows"></div>
+
+      <!-- My voices: choose the one to speak with -->
+      <div id="vtab-mine" role="tabpanel">
+        <div class="hwbanner"><span class="dot"></span><span id="voiceFolderText">voices folder</span><span class="flex1"></span><button class="linkbtn" id="btnOpenVoices">Open folder</button></div>
+        <div class="group">
+          <h3 class="h-flex">Library <span class="flex1"></span><button class="chipbtn amber" id="btnGetVoices">Get voices…</button></h3>
+          <div class="rows" id="voiceRows"></div>
+        </div>
+        <p class="sub small"><b>Use</b> makes a voice the one the Voice screen starts with; switching while a voice runs restarts it with the new one. An <b>.onnx</b> export loads as it is; a <b>.pth</b> checkpoint is converted inside the app the moment it arrives (a few seconds, nothing to install).</p>
       </div>
-      <div class="group" id="groupFind">
-        <h3>Find voices</h3>
-        <div class="findbar"><input type="search" id="findQuery" placeholder="search Hugging Face — a name, a character, a language…" value="RVC v2"><button class="chipbtn amber" id="btnFind">Search</button></div>
-        <p class="sub small">Searches huggingface.co only when you press Search. Voices on public libraries are uploaded by their users: use a voice only if you have the right to — your own recordings, or a speaker who agreed.</p>
-        <div class="rows" id="findRows"></div>
+
+      <!-- Get voices: every way a voice comes in -->
+      <div id="vtab-get" role="tabpanel" hidden>
+        <p class="sub">A voice you download or drop here lands in <b>My voices</b>, is converted if needed, and becomes the active voice — then press <b>Start voice</b>.</p>
+        <div class="group" id="groupFind">
+          <h3>Find voices on Hugging Face</h3>
+          <div class="findbar"><input type="search" id="findQuery" placeholder="search Hugging Face — a name, a character, a language…" value="RVC v2"><button class="chipbtn amber" id="btnFind">Search</button></div>
+          <p class="sub small">Searches huggingface.co only when you press Search. Voices on public libraries are uploaded by their users: use a voice only if you have the right to — your own recordings, or a speaker who agreed.</p>
+          <div class="rows" id="findRows"></div>
+        </div>
+        <div class="group">
+          <h3>Sample voice</h3>
+          <div class="rows" id="catalogVoiceRows"></div>
+        </div>
+        <div class="group">
+          <h3 class="h-flex">From a file on this PC <span class="flex1"></span><button class="chipbtn amber" id="btnImport">Import voice…</button></h3>
+          <div class="dropzone" id="dropZone" aria-label="Drop voice files here">
+            <b>Drop voice files here</b>
+            <span>.pth, .onnx, or the .zip a voice library gave you — the .index file is ignored</span>
+            <span class="mono" id="dropStatus" hidden></span>
+          </div>
+        </div>
         <p class="sub small">Other libraries, in your browser (then drop the download above): <a href="#" data-url="https://www.weights.com/">weights.com</a> · <a href="#" data-url="https://voice-models.com/">voice-models.com</a> · <a href="#" data-url="https://applio.org/">Applio</a></p>
       </div>
     </div>
@@ -113,7 +134,7 @@
       <div class="hwbanner"><span class="dot"></span><span id="hwText">detecting hardware…</span><span class="flex1"></span><button class="linkbtn" id="btnVerify">Verify installed files</button></div>
       <div class="group"><h3>Components</h3><div class="rows" id="componentRows"></div></div>
       <div class="group"><h3>Acceleration</h3><div class="rows" id="packRows"></div></div>
-      <div class="group"><h3>Downloadable voices</h3><div class="rows" id="catalogVoiceRows"></div></div>
+      <p class="sub small">Voices live on the <b>Voices</b> screen: <b>Get voices</b> to download or import, <b>My voices</b> to choose.</p>
     </div>
   </section>
 
@@ -138,8 +159,6 @@
           <span class="seg" id="segGain"><button data-v="-6">-6 dB</button><button data-v="0">0 dB</button><button data-v="6">+6 dB</button><button data-v="12">+12 dB</button></span></div>
         <div class="setrow"><span class="grow"><span class="name">Speaker</span><div class="desc">Voices trained with several speakers expose them by number; almost every voice has only speaker 0.</div></span>
           <select class="setsel small" id="selSpeaker"></select></div>
-        <div class="setrow"><span class="grow"><span class="name">Monitor</span><div class="desc">Also play the converted voice to a second output — your headphones — so you hear what others hear.</div></span>
-          <select class="setsel" id="selMonitor"></select></div>
         <div class="setrow"><span class="grow"><span class="name">Acceleration</span><div class="desc" id="accelDesc">Auto uses GPU acceleration when it is installed and this machine can run it; CPU forces the processor. Applies after a restart.</div></span>
           <span class="seg" id="segAccel"><button data-v="auto">Auto</button><button data-v="gpu">GPU</button><button data-v="cpu">CPU</button></span></div>
         <div class="setrow last" id="rowVirtualMic"><span class="grow"><span class="name">Virtual microphone</span><div class="desc" id="virtualMicDesc">Creates "Morphonic-Voice-Mic", an input other programs can pick, and plays the voice into it. Needs PipeWire (pipewire-pulse). Applies after a restart.</div></span>

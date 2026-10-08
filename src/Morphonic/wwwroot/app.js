@@ -108,7 +108,14 @@ function renderDevices(p) {
   };
   fill($('selInput'), p.inputs, p.savedInput, false);
   fill($('selOutput'), p.outputs, p.savedOutput, false);
-  fill($('selMonitor'), p.outputs, p.savedMonitor, true);
+  // Hear yourself (sidetone): auto = on whenever the output is a virtual cable
+  const side = $('selSidetone');
+  side.innerHTML = '<option value="auto">Auto (on when the output is a virtual cable)</option><option value="off">Off</option>' +
+    (p.outputs || []).map((d, i) => `<option value="${i}">${esc(d)}</option>`).join('');
+  side.value = p.sidetone === 'device' ? String(p.savedMonitor) : (p.sidetone || 'auto');
+  side.title = p.sidetone === 'auto'
+    ? (p.outputIsVirtual ? 'Sidetone is on: the output is a virtual cable, so the converted voice also plays on your default output' : 'Sidetone is off while the output is a real device you already hear')
+    : 'Sidetone: also play the converted voice to you, so you know what others hear';
 
   $('rngPitch').value = p.pitch;
   $('outPitch').textContent = (p.pitch > 0 ? '+' : '') + p.pitch + ' st';
@@ -156,13 +163,30 @@ function renderVoices(p) {
     const acts = v.kind === 'onnx'
       ? `${active ? '' : `<button class="chipbtn amber" data-use="${esc(v.id)}">Use</button>`}<button class="chipbtn danger" data-delv="${esc(v.id)}">Delete</button>`
       : `<button class="chipbtn amber" data-conv="${esc(v.id)}" ${converting ? 'disabled' : ''}>${converting ? 'Converting…' : 'Convert'}</button><button class="chipbtn danger" data-delv="${esc(v.id)}">Delete</button>`;
-    return `<div class="row${active ? ' active' : ''}"><span class="grow"><span class="name">${esc(v.name)}</span> ${badges}<span class="meta">${meta}</span></span><span class="acts">${acts}</span></div>`;
+    return `<div class="row${active ? ' active' : ''}" data-vid="${esc(v.id)}"><span class="grow"><span class="name">${esc(v.name)}</span> ${badges}<span class="meta">${meta}</span></span><span class="acts">${acts}</span></div>`;
   }).join('');
-  $('voiceRows').innerHTML = rows || '<div class="empty">No voices yet. Press <b>Import voice…</b> to add an RVC v2 voice (.pth or .onnx), or download the <b>sample voice</b> on the Models screen.</div>';
+  $('voiceRows').innerHTML = rows || '<div class="empty">No voices yet. Open <b>Get voices</b> to search Hugging Face, add the sample voice, or drop a .pth / .onnx file.</div>';
+  if (p.highlight) {
+    // a voice that just arrived: show My voices, bring its row into view and flash it
+    showVoiceTab('mine');
+    const row = $('voiceRows').querySelector(`[data-vid="${CSS.escape(p.highlight)}"]`);
+    if (row) { row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 2600); row.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  }
   $('voiceRows').querySelectorAll('[data-use]').forEach(b => b.addEventListener('click', () => send({ action: 'setVoice', id: b.dataset.use })));
   $('voiceRows').querySelectorAll('[data-conv]').forEach(b => b.addEventListener('click', () => send({ action: 'convertVoice', id: b.dataset.conv })));
   $('voiceRows').querySelectorAll('[data-delv]').forEach(b => b.addEventListener('click', () => send({ action: 'deleteVoice', id: b.dataset.delv })));
 }
+// The two halves of the Voices screen: choosing (My voices) and getting (Get voices).
+function showVoiceTab(name) {
+  document.querySelectorAll('#segVoices button').forEach(b => b.classList.toggle('on', b.dataset.vtab === name));
+  $('vtab-mine').hidden = name !== 'mine';
+  $('vtab-get').hidden = name !== 'get';
+  $('voicesHint').innerHTML = name === 'mine'
+    ? 'Pick a voice here, then press <b>Start voice</b> on the Voice screen.'
+    : 'Downloads land in <b>My voices</b> and become the active voice.';
+}
+document.querySelectorAll('#segVoices button').forEach(b => b.addEventListener('click', () => showVoiceTab(b.dataset.vtab)));
+$('btnGetVoices').addEventListener('click', () => showVoiceTab('get'));
 $('btnImport').addEventListener('click', () => send({ action: 'importVoice' }));
 $('btnOpenVoices').addEventListener('click', () => send({ action: 'openVoicesFolder' }));
 $('btnOpenData').addEventListener('click', () => send({ action: 'openDataFolder' }));
@@ -270,11 +294,12 @@ function renderHubFiles(p) {
   if (p.error) { box.innerHTML = `<span class="err">${esc(p.error)}</span>`; return; }
   const files = p.files || [];
   if (!files.length) { box.innerHTML = '<span class="err">no .pth, .onnx or .zip file in this repository</span>'; return; }
-  box.innerHTML = files.map(f => `<span class="file" data-file="${esc(f.path)}"><span class="grow">${esc(f.path)}</span><span>${MB(f.sizeBytes)}</span>
-    <button class="chipbtn amber" data-dlfile="${esc(f.path)}">Download</button></span>`).join('');
+  box.innerHTML = files.map(f => `<span class="file" data-file="${esc(f.path)}"><span class="grow">${esc(f.path)}${f.libraryName && f.libraryName !== f.path.split('/').pop() ? ` <span class="meta">→ ${esc(f.libraryName)}</span>` : ''}</span><span>${MB(f.sizeBytes)}</span>
+    <button class="chipbtn ${f.inLibrary ? '' : 'amber'}" data-dlfile="${esc(f.path)}">${f.inLibrary ? 'Use' : 'Download'}</button></span>`).join('');
   box.querySelectorAll('[data-dlfile]').forEach(b => b.addEventListener('click', () => {
     const f = files.find(x => x.path === b.dataset.dlfile);
     b.disabled = true;
+    // already in the library: the app answers by choosing it (no download)
     send({ action: 'downloadVoiceFile', repo: p.repo, path: f.path, sizeBytes: f.sizeBytes, sha256: f.sha256 || '' });
   }));
 }
@@ -283,7 +308,12 @@ function onVoiceProgress(p) {
   document.querySelectorAll('[data-file]').forEach(el => {
     if (!el.dataset.file.endsWith('/' + name) && el.dataset.file !== name) return;
     let bar = el.querySelector('.progress');
-    if (p.done) { if (bar) bar.remove(); const b = el.querySelector('button'); if (b) { b.disabled = false; b.textContent = p.ok ? 'Downloaded' : 'Download'; } return; }
+    if (p.done) {
+      if (bar) bar.remove();
+      const b = el.querySelector('button');
+      if (b) { b.disabled = false; b.textContent = p.ok ? 'Use' : 'Download'; b.classList.toggle('amber', !p.ok); }
+      return;
+    }
     if (!bar) { bar = document.createElement('div'); bar.className = 'progress'; bar.innerHTML = '<i style="width:0%"></i>'; el.insertBefore(bar, el.querySelector('button')); }
     const pct = p.total ? Math.round(p.received / p.total * 100) : 0;
     bar.querySelector('i').style.width = pct + '%';
@@ -446,7 +476,10 @@ toggleHandler($('tglVirtualMic'), () => {
   send({ action: 'config', virtualMic: dev.virtualMic });
 });
 $('selSpeaker').addEventListener('change', () => send({ action: 'config', speakerId: parseInt($('selSpeaker').value, 10) }));
-$('selMonitor').addEventListener('change', () => send({ action: 'setMonitorDevice', index: parseInt($('selMonitor').value, 10) }));
+$('selSidetone').addEventListener('change', () => {
+  const v = $('selSidetone').value;
+  send(v === 'auto' || v === 'off' ? { action: 'setSidetone', mode: v } : { action: 'setSidetone', mode: 'device', index: parseInt(v, 10) });
+});
 $('selInput').addEventListener('change', () => send({ action: 'setInputDevice', index: parseInt($('selInput').value, 10) }));
 $('selOutput').addEventListener('change', () => send({ action: 'setOutputDevice', index: parseInt($('selOutput').value, 10) }));
 // The pitch slider applies live; sends are throttled while dragging.

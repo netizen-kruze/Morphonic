@@ -88,8 +88,12 @@ Other programs need the converted voice as a **microphone**:
   in the other program. Morphonic points this out with a note the first time it
   sees no cable installed.
 
-To hear yourself at the same time, set **Settings → Monitor** to your
-headphones.
+**Hearing yourself (sidetone).** When the voice goes into a cable or the
+virtual microphone you would hear nothing of it, so **Hear yourself** on
+the Voice screen is on *Auto*: in that case the converted voice also plays
+on your default output (your headphones). Pick a device there to choose
+where, or *Off* to silence it. With a real output such as headphones
+selected, Auto stays quiet because you already hear the output itself.
 
 ## Voices
 
@@ -98,21 +102,35 @@ ContentVec features, `f0 = 1`) — RVC v1 voices and voices trained without
 pitch are refused with a message. The `.index` files that come with RVC
 voices are not used; conversion runs from the features alone.
 
-**Getting a voice in:** drop the file onto the Voices screen (`.pth`,
-`.onnx`, or the `.zip` a voice library gave you — the `.pth` inside is
-taken, the `.index` is ignored), press **Import voice…**, or copy it into
-the voices folder (**Open folder**).
+The Voices screen has two halves:
+
+- **My voices** — the library. **Use** makes a voice the one the Voice
+  screen starts with (switching while a voice runs restarts it with the new
+  one); **Delete** removes it; **Open folder** shows the files.
+- **Get voices** — every way a voice comes in: **Find voices** searches
+  Hugging Face and downloads a repository's `.pth`/`.onnx`/`.zip` straight
+  into the library, verified against the SHA-256 the Hub publishes; the
+  **sample voice** download; **Import voice…** or the drop zone for a file
+  on this PC (`.pth`, `.onnx`, or the `.zip` a voice library gave you — the
+  `.pth` inside is taken, the `.index` is ignored); and links to the other
+  libraries.
+
+Whatever the route, a new voice lands in **My voices**, is converted if it
+is a `.pth`, becomes the active voice (unless one is running, when the
+toast asks you to press Use), and is scrolled into view. Then press **Start
+voice**. Libraries name nearly every checkpoint `model.pth`; Morphonic
+names the voice after where it came from instead (the repository, the zip,
+or the folder), so "SpongeBob_SquarePants_RVC" gives a voice called
+"SpongeBob SquarePants RVC", and the next download never replaces it.
 
 **Where voices come from.** Only the sample voice ships with Morphonic (the
 RVC pretrained generator: a neutral, generic voice to prove the pipeline).
 Trained voices come from the RVC community:
 
-- **Find voices**, at the bottom of the Voices screen, searches Hugging
-  Face and downloads a repository's `.pth`/`.onnx`/`.zip` straight into the
-  library, verified against the SHA-256 the Hub publishes for the file.
+- **Find voices** on Hugging Face, inside the app.
 - **weights.com**, **voice-models.com** and **Applio**'s model search are
-  the big catalogs; the links on the Voices screen open them in your
-  browser, then drop the download onto Morphonic.
+  the big catalogs; the links under Get voices open them in your browser,
+  then drop the download onto Morphonic.
 - **Train your own** with RVC WebUI or Applio from ten minutes or more of
   clean recordings of a consenting speaker.
 
@@ -183,8 +201,9 @@ CPU for the rest of that run.
 - **Recommended defaults** picks block size and context for this machine's
   hardware tier.
 - **Noise gate**, **Loudness follows you**, **Output gain**, **Speaker**
-  (multi-speaker voices only), **Monitor**, **Acceleration** (Auto / GPU /
-  CPU, applies after a restart), **Virtual microphone** (Linux).
+  (multi-speaker voices only), **Acceleration** (Auto / GPU / CPU, applies
+  after a restart), **Virtual microphone** (Linux). **Hear yourself**
+  (sidetone) lives on the Voice screen next to the device pickers.
 
 ## Requirements
 

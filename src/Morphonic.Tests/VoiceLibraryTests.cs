@@ -33,7 +33,7 @@ public class VoiceLibraryTests
             var (ok, message) = VoiceLibrary.Import(zip);
             Assert.True(ok, message);
             Assert.Contains("MyVoice.pth", message);
-            Assert.Contains("Convert", message);
+            Assert.Contains("converting", message);
             var files = Directory.GetFiles(VoiceLibrary.Dir).Select(Path.GetFileName).OrderBy(n => n).ToArray();
             Assert.Equal(new[] { "MyVoice.pth", "evil.onnx" }, files);   // the entry's own name, never its folder
             Assert.False(File.Exists(Path.Combine(dir, "evil.onnx")));
@@ -43,6 +43,48 @@ public class VoiceLibraryTests
             var (ok2, message2) = VoiceLibrary.Import(Path.Combine(dir, "nothing.zip"));
             Assert.False(ok2);
             Assert.Contains(".index", message2);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void GenericFileNamesTakeTheNameOfWhereTheyCameFrom()
+    {
+        // Hugging Face: owner/Repo_Name with the usual "model.pth" inside
+        Assert.Equal("SpongeBob SquarePants RVC v2.pth", VoiceLibrary.LibraryName("binant/SpongeBob_SquarePants__RVC_v2_", "model.pth"));
+        Assert.Equal("Some Voice.pth", VoiceLibrary.LibraryName("x/Some_Voice", "G_2333.pth"));
+        Assert.Equal("Some Voice.onnx", VoiceLibrary.LibraryName("x/Some_Voice", "weights/model.onnx"));
+        // several generic files in named sub-folders stay apart
+        Assert.Equal("Pack Alice.pth", VoiceLibrary.LibraryName("x/Pack", "Alice/model.pth"));
+        Assert.Equal("Pack Bob.pth", VoiceLibrary.LibraryName("x/Pack", "Bob/model.pth"));
+        // a descriptive file name is kept as it is
+        Assert.Equal("Obama.pth", VoiceLibrary.LibraryName("x/whatever", "voices/Obama.pth"));
+        Assert.Equal("MyVoice.pth", VoiceLibrary.LibraryName("MyVoice", "MyVoice/MyVoice.pth"));
+        // nothing a file system refuses
+        Assert.Equal("a b c.pth", VoiceLibrary.LibraryName("x/a:b*c", "model.pth"));
+        Assert.True(VoiceLibrary.IsGenericName("model.pth"));
+        Assert.True(VoiceLibrary.IsGenericName("G_10000.pth"));
+        Assert.True(VoiceLibrary.IsGenericName("D_10000.pth"));
+        Assert.False(VoiceLibrary.IsGenericName("Gollum.pth"));
+    }
+
+    [Fact]
+    public void ZipWithAGenericCheckpointIsNamedAfterTheZip()
+    {
+        var dir = TempData();
+        try
+        {
+            var zip = Path.Combine(dir, "Cartoon_Cat.zip");
+            using (var z = ZipFile.Open(zip, ZipArchiveMode.Create))
+            {
+                using (var s = z.CreateEntry("model.pth").Open()) s.Write(new byte[] { 1 });
+                using (var s = z.CreateEntry("model.index").Open()) s.Write(new byte[] { 2 });
+            }
+            var (ok, message) = VoiceLibrary.Import(zip);
+            Assert.True(ok, message);
+            Assert.Contains("Cartoon Cat.pth", message);
+            Assert.Contains("converting", message);
+            Assert.Equal(new[] { "Cartoon Cat.pth" }, Directory.GetFiles(VoiceLibrary.Dir).Select(Path.GetFileName).ToArray());
         }
         finally { Directory.Delete(dir, true); }
     }

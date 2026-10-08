@@ -47,7 +47,7 @@ Simulate a fresh machine: quit Morphonic, rename the data folder away
 - [ ] Start voice with the sample voice → the You meter follows your speech,
       the Voice meter follows the output, the header chip reads "keeping up"
       (green) on capable hardware.
-- [ ] Listen through the Monitor output: the converted voice is intelligible,
+- [ ] Listen through Hear yourself (sidetone): the converted voice is intelligible,
       follows your pitch and rhythm, no clicks at block boundaries during
       sustained vowels.
 - [ ] Pitch slider: +12 doubles the perceived pitch live (no restart), −12
@@ -70,18 +70,30 @@ Simulate a fresh machine: quit Morphonic, rename the data folder away
 
 ## C. Voices
 
-- [ ] Import an `.onnx` voice: appears in the library with its sample rate;
+- [ ] The Voices screen opens on **My voices** (the library) with a
+      **Get voices** tab beside it; **Get voices…** in the library header and
+      the tab both switch; Get voices holds Find voices, the sample voice,
+      Import voice… and the drop zone, and the library links.
+- [ ] Import an `.onnx` voice: appears in My voices with its sample rate;
       Use makes it active; Start converts with it.
-- [ ] Drop a `.pth` onto the Voices screen (or a `.zip` from a voice
+- [ ] Drop a `.pth` onto the Get voices drop zone (or a `.zip` from a voice
       library): the drop zone highlights while dragging, a "receiving…"
-      line counts up, the voice appears, converts by itself within a few
-      seconds (no Python involved: `last_boot.log` says "converted … in-app")
-      and the `.pth` row is replaced by the `.onnx`. A dropped `.txt` is
-      refused with a toast.
+      line counts up, the view switches to My voices with the new row
+      flashed, it converts by itself within a few seconds (no Python
+      involved: `last_boot.log` says "converted … in-app"), the `.pth` row
+      is replaced by the `.onnx`, and it becomes the active voice (a toast
+      says so; if a voice was running the toast asks you to press Use
+      instead). A dropped `.txt` is refused with a toast.
 - [ ] Import voice… (file dialog) does the same for a chosen file.
+- [ ] Naming: a `model.pth` / `G_1234.pth` from a repository, zip or folder
+      is named after that repository, zip or folder ("SpongeBob SquarePants
+      RVC v2"), never "model"; a descriptive file name is kept.
 - [ ] Find voices: Search lists Hugging Face results, Show files lists a
-      repository's `.pth`/`.onnx`/`.zip`, Download shows a bar and the file
-      lands in the library; the three library links open the browser.
+      repository's `.pth`/`.onnx`/`.zip` with the library name each would
+      get, Download shows a bar, the voice lands in My voices and becomes
+      active, the button turns into **Use**, and pressing Use again chooses
+      it without a second download; the three library links open the
+      browser.
 - [ ] A v1 or no-f0 `.pth`: refused with a message saying so, in-app.
 - [ ] A `.pth` with an unusual configuration: Convert falls back to the
       Python tool; without PyTorch the toast names Settings → Conversion →
@@ -103,8 +115,14 @@ Simulate a fresh machine: quit Morphonic, rename the data folder away
       Morphonic runs; both vanish on exit. Discord/OBS/VRChat (Proton) list
       "Morphonic-Voice-Mic" and hear the converted voice. Output left on System
       default routes to the virtual sink automatically.
-- [ ] Monitor = headphones: you hear the converted voice; Monitor = Off
-      stops it; the main output is unaffected.
+- [ ] Hear yourself (Voice screen) = headphones: you hear the converted
+      voice; Off stops it; the main output is unaffected. Auto: silent
+      while the output is a real device, on (default output) as soon as the
+      output is CABLE Input / the virtual microphone; `last_boot.log`'s
+      "voice started" line ends with "sidetone: …".
+- [ ] Windows, with VB-CABLE installed: Output = CABLE Input, then Discord /
+      VRChat / OBS with "CABLE Output" as the microphone hears the converted
+      voice, and you hear it too through Auto sidetone.
 - [ ] Device unplugged while idle → Rescan (changing a device) lists the new
       set; a saved device that is gone resolves to System default.
 

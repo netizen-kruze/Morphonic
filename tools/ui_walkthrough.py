@@ -22,6 +22,7 @@ to --out.
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -589,7 +590,7 @@ def phase_settings(app, published_exe):
     time.sleep(0.5)
     result("ContentVec" in (p.text("#docNotice") or ""), "About: Third-party notice names ContentVec")
     about = p.text("#view-settings") or ""
-    result("1.0.0" in about, "About shows the version")
+    result(re.search(r"1\.0\.\d+", about) is not None, "About shows the version")
     app.shot("F2_about")
     result(p.visible("#btnInstallConverter"), "Settings shows the fallback-converter install button")
     p.click('#segAccel button[data-v="cpu"]')
@@ -605,7 +606,7 @@ def phase_settings(app, published_exe):
         result("components: ready" in log, "update simulation: the published exe on the same data folder finds the components")
         result("voice:" in log and "(none chosen)" not in log, "update simulation: the chosen voice survives")
         app.view("settings")
-        result("1.0.0" in (p.text("#view-settings") or ""), "published exe reports its version")
+        result(re.search(r"1\.0\.\d+", p.text("#view-settings") or "") is not None, "published exe reports its version")
         app.shot("F3_published_exe")
         app.stop()
 
