@@ -37,6 +37,15 @@ Requirements on the build machine (Windows 11):
   through the Visual Studio Installer), which supplies the
   `WindowsKernelModeDriver10.0` toolset.
 
+Or, without touching Visual Studio: the **Enterprise WDK** (EWDK), a
+self-contained ISO from Microsoft's WDK download page (about 20 GB) with
+its own build tools, SDK and WDK. Mount it (double-click, or
+`Mount-DiskImage`) and pass the mounted drive:
+
+```powershell
+.\build.ps1 -DriverOnly -Ewdk E:\     # E: = the mounted EWDK
+```
+
 Then, from the repository root:
 
 ```powershell
@@ -45,10 +54,14 @@ Then, from the repository root:
 ```
 
 `-Driver` runs MSBuild on `driver\MorphonicCable\MorphonicCable.vcxproj`
-(Release | x64) and copies the INF, SYS and CAT it produces. The CAT from a
-local build is **test-signed** by the WDK's build (a self-made certificate):
-Windows will not load it on a normal machine, and Morphonic reports the
-refusal as it is.
+(Release | x64, `SignMode=Off`) and copies the INF, SYS and CAT it
+produces. The CAT from a local build is **unsigned**: Windows will not
+load it, so the app offers no Install button for it and says why in
+Settings (it checks the catalog for the Hardware Dev Center signer). The
+1.0.1 package was built this way with the EWDK 10.0.28000 and Visual
+Studio 2026 Build Tools; the two warnings the inherited sources trip
+(`ExAllocatePoolWithTag` deprecated in favour of `ExAllocatePool2`, one
+empty statement) are excluded from warnings-as-errors in the project.
 
 ## Signing: the step only the publisher can do
 

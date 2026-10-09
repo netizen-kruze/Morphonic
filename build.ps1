@@ -25,18 +25,31 @@ param(
   # a package signed through Microsoft's Hardware Dev Center loads on
   # users' machines (driver\README.md).
   [switch]$Driver,
-  [switch]$DriverOnly
+  [switch]$DriverOnly,
+  # -Ewdk <root>: build the driver with a mounted Enterprise WDK (its
+  # BuildEnv\SetupBuildEnv.cmd) instead of an installed Visual Studio.
+  [string]$Ewdk = ''
 )
 $ErrorActionPreference = 'Stop'
 if ($Driver -or $DriverOnly) {
-  $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-  $vs = & $vswhere -products * -latest -requires Component.Microsoft.Windows.DriverKit.BuildTools -property installationPath 2>$null
-  if (-not $vs) { $vs = & $vswhere -products * -latest -requires Component.Microsoft.Windows.DriverKit -property installationPath 2>$null }
-  if (-not $vs) { throw 'No Visual Studio with the Windows Driver Kit component (see driver\README.md).' }
-  $msbuild = Join-Path $vs 'MSBuild\Current\Bin\MSBuild.exe'
   $dproj = Join-Path $PSScriptRoot 'driver\MorphonicCable\MorphonicCable.vcxproj'
-  Write-Host "==> Building the virtual microphone driver (Release, x64) with $msbuild" -ForegroundColor Cyan
-  & $msbuild $dproj /nologo /v:m /p:Configuration=Release /p:Platform=x64 /p:SignMode=Off
+  if ($Ewdk) {
+    $setup = Join-Path $Ewdk 'BuildEnv\SetupBuildEnv.cmd'
+    if (-not (Test-Path $setup)) { throw "not an EWDK root (no BuildEnv\SetupBuildEnv.cmd): $Ewdk" }
+    Write-Host "==> Building the virtual microphone driver (Release, x64) with the EWDK at $Ewdk" -ForegroundColor Cyan
+    # The EWDK's vsdevcmd looks for vswhere.exe on the path; the Visual Studio
+    # Installer folder has it on any machine with Visual Studio or Build Tools.
+    $env:PATH = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer;" + $env:PATH
+    cmd /c "call `"$setup`" amd64 >nul 2>&1 & msbuild `"$dproj`" /nologo /v:m /p:Configuration=Release /p:Platform=x64 /p:SignMode=Off"
+  } else {
+    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    $vs = & $vswhere -products * -latest -requires Component.Microsoft.Windows.DriverKit.BuildTools -property installationPath 2>$null
+    if (-not $vs) { $vs = & $vswhere -products * -latest -requires Component.Microsoft.Windows.DriverKit -property installationPath 2>$null }
+    if (-not $vs) { throw 'No Visual Studio with the Windows Driver Kit component, and no -Ewdk given (see driver\README.md).' }
+    $msbuild = Join-Path $vs 'MSBuild\Current\Bin\MSBuild.exe'
+    Write-Host "==> Building the virtual microphone driver (Release, x64) with $msbuild" -ForegroundColor Cyan
+    & $msbuild $dproj /nologo /v:m /p:Configuration=Release /p:Platform=x64 /p:SignMode=Off
+  }
   if ($LASTEXITCODE -ne 0) { throw 'driver build failed' }
   $pkg = Join-Path $PSScriptRoot 'driver\package'
   New-Item -ItemType Directory -Force $pkg | Out-Null

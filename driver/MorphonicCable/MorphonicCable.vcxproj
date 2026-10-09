@@ -146,6 +146,9 @@
     <ClCompile>
       <TreatWarningAsError>true</TreatWarningAsError>
       <SpectreMitigation>false</SpectreMitigation>
+      <!-- 4996: ExAllocatePoolWithTag deprecated in favour of ExAllocatePool2 (still correct on
+           Windows 10 / 11); 4390: an empty statement in the inherited sources. -->
+      <DisableSpecificWarnings>4996;4390;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <PreprocessorDefinitions>_WIN64;_AMD64_;AMD64;%(PreprocessorDefinitions);_NEW_DELETE_OPERATORS_</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -161,11 +164,17 @@
     <DriverSign>
       <FileDigestAlgorithm>SHA256</FileDigestAlgorithm>
     </DriverSign>
+    <Inf>
+      <TimeStamp>1.0.1.0</TimeStamp>
+    </Inf>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <TreatWarningAsError>true</TreatWarningAsError>
       <SpectreMitigation>false</SpectreMitigation>
+      <!-- 4996: ExAllocatePoolWithTag deprecated in favour of ExAllocatePool2 (still correct on
+           Windows 10 / 11); 4390: an empty statement in the inherited sources. -->
+      <DisableSpecificWarnings>4996;4390;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <PreprocessorDefinitions>_WIN64;_AMD64_;AMD64;%(PreprocessorDefinitions);_NEW_DELETE_OPERATORS_</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -181,6 +190,9 @@
     <DriverSign>
       <FileDigestAlgorithm>SHA256</FileDigestAlgorithm>
     </DriverSign>
+    <Inf>
+      <TimeStamp>1.0.1.0</TimeStamp>
+    </Inf>
   </ItemDefinitionGroup>
   <ItemGroup>
     <Inf Include="MorphonicCable.inf" />

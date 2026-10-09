@@ -206,10 +206,23 @@ and the package from the driver store. With the virtual microphone on and
 Output on System default the voice is routed into Morphonic Voice, and
 *Hear yourself* (Auto) treats it as a virtual output.
 
-What is verified here: the app side compiles and embeds a package when
-`driver/package/` holds one; the pnputil listing parser has a unit test;
-the Settings row shows Install / Remove / "this build carries no driver
-package" as appropriate. What is **not** verified: loading the driver.
+What is verified here: the driver **builds** from source — with the
+Enterprise WDK 10.0.28000 (Visual Studio 2026 Build Tools 18.3, mounted
+from Microsoft's ISO, `build.ps1 -DriverOnly -Ewdk E:\`), Release x64,
+`MorphonicCable.sys` 42 KB, INF stamped 1.0.1.0 with `PnpLockdown=1`, the
+only build problems being two warnings the inherited sources trip
+(`ExAllocatePoolWithTag` deprecated, an empty statement), now excluded
+from warnings-as-errors; the package is embedded in the published exe
+(`driver/MorphonicCable.{inf,sys,cat}` resources); unit tests 57 / 57; and
+a driven run of Settings on this build 6 / 6: the row is shown on Windows
+with the Linux toggle hidden, and because the catalog is unsigned it
+offers no Install button and explains the signing situation instead,
+naming VB-CABLE as the interim route. The two elevated entry points were
+also run without elevation from the published exe: `--remove-virtual-mic`
+answered "the Morphonic virtual microphone was not installed" (exit 0),
+and `--install-virtual-mic <package>` stopped at the first SetupAPI call
+with "Access is denied" (exit 1), leaving no device behind — the
+administrator boundary holds. What is **not** verified: loading the driver.
 Windows loads a kernel driver only when Microsoft has signed it through
 the Hardware Dev Center (EV certificate + attestation signing,
 `driver/README.md`), a step only the publisher can take; this test

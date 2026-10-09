@@ -13,6 +13,7 @@ ClassGuid = {4d36e96c-e325-11ce-bfc1-08002be10318}
 Provider=%OrganizationName% ; defined later in Strings section
 CatalogFile=MorphonicCable.cat
 DriverVer= ; set DriverVer in stampinf property pages
+PnpLockdown=1
 DriverPackageDisplayName=%DriverDisplayName%
 
 [DestinationDirs]

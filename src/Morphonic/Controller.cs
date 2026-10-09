@@ -1184,7 +1184,10 @@ public sealed class VoiceController : IDisposable
             virtualMic = _settings.VirtualMic,
             virtualMicStatus = VirtualMic.Status,
             virtualMicInstalled = VirtualMic.Supported,
-            virtualMicPackage = OperatingSystem.IsWindows() && WindowsVirtualMic.PackageAvailable,
+            // Install is offered only for a package Windows will load (signed
+            // through the Hardware Dev Center); an unsigned one is reported.
+            virtualMicPackage = OperatingSystem.IsWindows() && WindowsVirtualMic.PackageAvailable && WindowsVirtualMic.PackageSigned,
+            virtualMicUnsigned = OperatingSystem.IsWindows() && WindowsVirtualMic.PackageAvailable && !WindowsVirtualMic.PackageSigned,
             virtualMicBusy = _virtualMicBusy,
             pitch = _settings.PitchSemitones,
             speakerId = _settings.SpeakerId,

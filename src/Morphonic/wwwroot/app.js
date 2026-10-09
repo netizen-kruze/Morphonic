@@ -137,7 +137,9 @@ function renderDevices(p) {
       ? 'Installed: other programs see "Morphonic Microphone" as a microphone. Leave Output on System default and the voice plays into "Morphonic Voice" by itself; Hear yourself (Auto) lets you listen along.'
       : p.virtualMicPackage
         ? 'Adds "Morphonic Voice" (an output) and "Morphonic Microphone" (an input other programs can pick) with Morphonic\'s own driver. One administrator prompt; stays installed until removed here.'
-        : 'This build carries no driver package, so no virtual microphone can be installed from it. With VB-CABLE installed instead, pick "CABLE Input" as the output.';
+        : p.virtualMicUnsigned
+          ? 'Morphonic\'s driver is built into this app but not yet signed by Microsoft, and Windows only loads signed drivers, so it cannot be installed from this build. Until a signed release ships, use VB-CABLE: pick "CABLE Input" as the output and "CABLE Output" in the other program.'
+          : 'This build carries no driver package, so no virtual microphone can be installed from it. With VB-CABLE installed instead, pick "CABLE Input" as the output.';
   } else {
     $('tglVirtualMic').hidden = false;
     $('btnInstallVirtualMic').hidden = $('btnRemoveVirtualMic').hidden = true;
