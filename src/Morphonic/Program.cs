@@ -132,7 +132,9 @@ internal static class Program
             }
             if (!LinuxHost.HasDisplay)
             {
-                Console.Error.WriteLine("Morphonic: no display (neither WAYLAND_DISPLAY nor DISPLAY is set) — the window cannot open.");
+                const string noDisplay = "no display (neither WAYLAND_DISPLAY nor DISPLAY is set) — the window cannot open";
+                Console.Error.WriteLine("Morphonic: " + noDisplay + ".");
+                ErrorLog.WriteNote("Display", noDisplay);   // so --report can say why a launch went nowhere
                 return 1;
             }
             // WebKitGTK's DMA-BUF renderer is known to blank or crash on the
@@ -167,11 +169,15 @@ internal static class Program
         }
 
         using var tray = OperatingSystem.IsWindows() ? new TrayService(Path.Combine(AppPaths.UiDir, "app.ico")) : null;
-        // The browser profile lives in the data folder. Photino's default is
-        // one folder shared by every Photino app on the machine, and WebView2
-        // refuses to start when that folder is already in use with different
-        // browser arguments: two apps open at once, or a lingering browser
-        // process, would leave this window blank.
+        // Windows: the WebView2 profile lives in the data folder. Photino's
+        // default is one folder shared by every Photino app on the machine,
+        // and WebView2 refuses to start when that folder is already in use
+        // with different browser arguments: two apps open at once, or a
+        // lingering browser process, would leave this window blank.
+        // Linux: Photino's WebKitGTK backend ignores this path and uses the
+        // default web context, which keeps its storage and cache under
+        // ~/.local/share/<binary name>/ and ~/.cache/<binary name>/
+        // (LinuxInstaller.Uninstall --purge removes them).
         _window = new PhotinoWindow()
             .SetLogVerbosity(0)
             .SetTemporaryFilesPath(Path.Combine(AppPaths.DataDir, "webview"))
@@ -264,7 +270,12 @@ internal static class Program
         _window.WaitForClose();
         _exiting = true;
         ctrl.Stop("exiting");
-        if (VirtualMic.Supported) VirtualMic.Remove();
+        if (VirtualMic.Supported)
+        {
+            var had = VirtualMic.Status;
+            VirtualMic.Remove();
+            if (OperatingSystem.IsLinux()) BootLog.Append($"virtual mic: {VirtualMic.Status} (was: {had})");
+        }
         BootSentinel.Clear();
         return 0;
     }
@@ -277,6 +288,8 @@ internal static class Program
         "  Morphonic --bench                      Settings > Speed check from a terminal, report on stdout\n" +
         "  Morphonic --install-gpu                download GPU acceleration from a terminal, progress on stdout\n" +
         "  Morphonic --fetch-models [--no-voice]  the Models screen's downloads from a terminal (components, and the sample voice)\n" +
+        "  Morphonic --convert <in.wav> <out.wav> [--pitch <semitones>]\n" +
+        "                                     run a recording through the live pipeline with the chosen voice, to judge it without a microphone\n" +
         "  Morphonic --pack-offline <models dir> <out file> [--base <binary>]\n" +
         "                                     write the offline build: this binary (or --base) with the catalog's model files inside (build.ps1 -Offline)\n" +
         "  Morphonic --install                    (Linux) copy this binary to ~/.local/share/Morphonic/app and add it to the app grid\n" +

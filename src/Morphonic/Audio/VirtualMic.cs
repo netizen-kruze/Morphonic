@@ -47,11 +47,17 @@ public static class VirtualMic
         if (!Supported) { error = "virtual microphones are a Linux feature here"; return false; }
         if (Exists())
         {
-            // Left behind by a run that did not exit cleanly: its modules
-            // are adopted, so Remove still takes them down at exit.
+            // Already there. Left behind by a run of this data folder that
+            // did not exit cleanly, it is adopted so Remove still takes it
+            // down at exit; made by another running Morphonic (another data
+            // folder) or by hand, it is used and left alone.
             Modules.Clear();
-            Modules.AddRange(FindModules(LinuxHost.Capture("pactl", new[] { "list", "short", "modules" })));
-            Status = Modules.Count > 0 ? "present (adopted modules " + string.Join(", ", Modules) + ")" : "present (modules unknown)";
+            var found = FindModules(LinuxHost.Capture("pactl", new[] { "list", "short", "modules" }));
+            var record = ReadRecord();
+            Modules.AddRange(ModulesToAdopt(found, record, ProcessAlive));
+            Status = Modules.Count > 0
+                ? "present (adopted modules " + string.Join(", ", Modules) + " of a run that did not exit cleanly)"
+                : "present (made by another program or Morphonic; left alone)";
             return true;
         }
         var sink = LinuxHost.Capture("pactl", new[]
@@ -73,6 +79,7 @@ public static class VirtualMic
         }).Trim();
         if (int.TryParse(source, out var sourceModule)) Modules.Add(sourceModule);
         else ErrorLog.WriteNote("VirtualMic", "the remapped source was not created (" + source + "); programs can still pick 'Monitor of " + SinkDescription + "'");
+        WriteRecord();
         Status = "created (modules " + string.Join(", ", Modules) + ")";
         return true;
     }
@@ -84,7 +91,57 @@ public static class VirtualMic
         for (int i = Modules.Count - 1; i >= 0; i--)
             LinuxHost.Capture("pactl", new[] { "unload-module", Modules[i].ToString() });
         Modules.Clear();
+        try { File.Delete(RecordPath); } catch { }
         Status = "removed";
+    }
+
+    // ── ownership record ───────────────────────────────────────────
+    // <data dir>/virtualmic.json: the pid that loaded the modules and their
+    // ids, written at creation and deleted at a clean exit. Its presence
+    // after a start means that run never got to Remove.
+
+    public sealed record Record(int Pid, int[] Modules);
+
+    private static string RecordPath => Path.Combine(AppPaths.DataDir, "virtualmic.json");
+
+    private static void WriteRecord()
+    {
+        try
+        {
+            Directory.CreateDirectory(AppPaths.DataDir);
+            File.WriteAllText(RecordPath, System.Text.Json.JsonSerializer.Serialize(new Record(Environment.ProcessId, Modules.ToArray())));
+        }
+        catch (Exception ex) { ErrorLog.WriteEntry("VirtualMic.Record", ex); }
+    }
+
+    private static Record? ReadRecord()
+    {
+        try
+        {
+            if (!File.Exists(RecordPath)) return null;
+            return System.Text.Json.JsonSerializer.Deserialize<Record>(File.ReadAllText(RecordPath));
+        }
+        catch { return null; }
+    }
+
+    private static bool ProcessAlive(int pid)
+    {
+        if (pid <= 0) return false;
+        if (pid == Environment.ProcessId) return true;
+        try { using var p = System.Diagnostics.Process.GetProcessById(pid); return !p.HasExited; }
+        catch { return false; }
+    }
+
+    // Pure: of the modules now carrying our names (`found`), those a dead
+    // run of this data folder recorded as its own. Nothing is adopted
+    // without a record, or while the recording process still runs.
+    internal static List<int> ModulesToAdopt(IReadOnlyList<int> found, Record? record, Func<int, bool> alive)
+    {
+        var adopt = new List<int>();
+        if (record == null || record.Modules == null || alive(record.Pid)) return adopt;
+        foreach (var id in found)
+            if (Array.IndexOf(record.Modules, id) >= 0) adopt.Add(id);
+        return adopt;
     }
 
     // The ids of our modules in "pactl list short modules" output

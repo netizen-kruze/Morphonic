@@ -22,6 +22,22 @@ internal static class PipeWireAudio
     // PipeWire 1.2; 1.0 (Ubuntu 24.04 LTS, Debian 12 backports) rejects the
     // option and exits at once — there a pipe is raw anyway, so the same
     // tool is tried again without it before falling back to PulseAudio's.
+    // A stream aimed at a chosen device must end when that device goes:
+    // WirePlumber otherwise re-links it to the default device without a
+    // word, and a voice meant for the virtual microphone would play out of
+    // the speakers. With this property the tool exits ("target not found")
+    // and the session reports the failure. The default device has no
+    // target, so a stream on it follows the default as it should.
+    public const string DontReconnect = "{ node.dont-reconnect = true }";
+
+    private static void AddTarget(List<string> args, string? target)
+    {
+        if (target == null) return;
+        args.Add("--target=" + target);
+        args.Add("-P");
+        args.Add(DontReconnect);
+    }
+
     public static IEnumerable<Command> CaptureCommands(string? target)
     {
         foreach (var raw in new[] { true, false })
@@ -29,7 +45,7 @@ internal static class PipeWireAudio
             var pw = new List<string> { "--rate=16000", "--channels=1", "--format=s16" };
             if (raw) pw.Add("--raw");
             pw.Add("--latency=20ms");
-            if (target != null) pw.Add("--target=" + target);
+            AddTarget(pw, target);
             pw.Add("-");
             yield return new Command("pw-record", "pw-record", pw.ToArray());
         }
@@ -48,7 +64,7 @@ internal static class PipeWireAudio
             var pw = new List<string> { $"--rate={rate}", "--channels=1", "--format=s16" };
             if (raw) pw.Add("--raw");
             pw.Add("--latency=20ms");
-            if (target != null) pw.Add("--target=" + target);
+            AddTarget(pw, target);
             pw.Add("-");
             yield return new Command("pw-play", "pw-play", pw.ToArray());
         }

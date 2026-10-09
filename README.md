@@ -239,8 +239,9 @@ or replaces itself.
 
 To fully uninstall: delete the app and that data folder. Windows also keeps
 one registry value under `HKEY_CURRENT_USER\Software\Morphonic` (records that
-the app has run before); Linux keeps `~/.config/Morphonic/last_run`, and
-`--uninstall --purge` removes everything.
+the app has run before); Linux keeps `~/.config/Morphonic/last_run` and
+WebKitGTK's page storage and cache under `~/.local/share/<binary name>/`
+and `~/.cache/<binary name>/`, and `--uninstall --purge` removes everything.
 
 ## Privacy & network
 

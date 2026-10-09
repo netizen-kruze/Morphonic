@@ -19,28 +19,30 @@ public static class SupportReport
         var dir = AppPaths.DataDir;
         Directory.CreateDirectory(dir);
         var path = Path.Combine(dir, $"Morphonic-report-{DateTime.Now:yyyyMMdd-HHmm}.zip");
-        using var zip = ZipFile.Open(path, ZipArchiveMode.Create);
 
-        foreach (var name in new[] { "last_boot.log", "error.log", "error.log.1", "bench.log", "settings.json", "driver-install.log" })
-            AddIfExists(zip, Path.Combine(dir, name), name);
-        AddIfExists(zip, Path.Combine(dir, "models", "models_manifest.json"), "models_manifest.json");
-
+        // The description is gathered before the zip is opened, so the
+        // folder listing never shows this report half-written.
         var sb = new StringBuilder();
         sb.AppendLine("Morphonic " + version);
         sb.AppendLine("written:   " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
         sb.AppendLine("machine:   " + Safe(MachineProfile.Describe));
         sb.AppendLine("exe:       " + Environment.ProcessPath);
         sb.AppendLine("data:      " + dir);
-        sb.AppendLine("os:        " + Environment.OSVersion.VersionString + (OperatingSystem.IsLinux() ? " / " + Safe(() => File.Exists("/etc/os-release") ? File.ReadAllText("/etc/os-release").Split('\n').FirstOrDefault(l => l.StartsWith("PRETTY_NAME=")) ?? "" : "") : ""));
+        sb.AppendLine("os:        " + Environment.OSVersion.VersionString + (OperatingSystem.IsLinux()
+            ? " / " + Safe(() => File.Exists("/etc/os-release") ? (File.ReadAllText("/etc/os-release").Split('\n').FirstOrDefault(l => l.StartsWith("PRETTY_NAME=")) ?? "")["PRETTY_NAME=".Length..].Trim('"') : "")
+            : ""));
         foreach (var env in new[] { "XDG_SESSION_TYPE", "XDG_CURRENT_DESKTOP", "WAYLAND_DISPLAY", "DISPLAY", "GDK_BACKEND", "WEBKIT_DISABLE_DMABUF_RENDERER", "PULSE_SERVER", "LD_PRELOAD" })
-            sb.AppendLine($"{env,-9}  {Environment.GetEnvironmentVariable(env) ?? "(unset)"}");
+            sb.AppendLine($"{env,-30} {Environment.GetEnvironmentVariable(env) ?? "(unset)"}");
         sb.AppendLine();
         sb.AppendLine("inputs:");
         foreach (var d in Safe(() => AudioDevices.Inputs().Select(x => "  " + x.Name).ToArray(), Array.Empty<string>())) sb.AppendLine(d);
         sb.AppendLine("outputs:");
         foreach (var d in Safe(() => AudioDevices.Outputs().Select(x => "  " + x.Name).ToArray(), Array.Empty<string>())) sb.AppendLine(d);
         sb.AppendLine();
-        sb.AppendLine("virtual mic: " + Safe(() => VirtualMic.Status));
+        // The status is this process's own: from a terminal it says nothing
+        // about a Morphonic window that is open at the same time, whose
+        // devices show in the lists above.
+        sb.AppendLine("virtual mic: " + Safe(() => VirtualMic.Status) + " (in this process)");
         if (OperatingSystem.IsLinux())
         {
             var missing = Safe(() => LinuxHost.MissingUiDependencies().Select(m => m.Library + " MISSING (dnf install " + m.Package + ")").ToArray(), Array.Empty<string>());
@@ -52,6 +54,11 @@ public static class SupportReport
         sb.AppendLine("data folder:");
         foreach (var f in Safe(() => Directory.EnumerateFileSystemEntries(dir).Select(p => "  " + Path.GetFileName(p) + (File.Exists(p) ? "  " + new FileInfo(p).Length + " B" : "/")).ToArray(), Array.Empty<string>()))
             sb.AppendLine(f);
+
+        using var zip = ZipFile.Open(path, ZipArchiveMode.Create);
+        foreach (var name in new[] { "last_boot.log", "error.log", "error.log.1", "bench.log", "settings.json", "driver-install.log", "virtualmic.json" })
+            AddIfExists(zip, Path.Combine(dir, name), name);
+        AddIfExists(zip, Path.Combine(dir, "models", "models_manifest.json"), "models_manifest.json");
         var entry = zip.CreateEntry("system.txt");
         using (var w = new StreamWriter(entry.Open())) w.Write(sb.ToString());
         return path;

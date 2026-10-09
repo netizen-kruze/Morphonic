@@ -132,20 +132,28 @@ public sealed class VoiceController : IDisposable
                 break;
 
             case "start":
-                RunOffUiThread(() =>
                 {
-                    lock (_sessionLock)
+                    int? inputIndex = msg["inputIndex"]?.Value<int?>(), outputIndex = msg["outputIndex"]?.Value<int?>();
+                    RunOffUiThread(() =>
                     {
-                        if (IsRunning) { SendState(); return; }
-                        lock (_settingsLock)
+                        lock (_sessionLock)
                         {
-                            if (msg["inputIndex"]?.Value<int?>() is int ii) SetInput(ii);
-                            if (msg["outputIndex"]?.Value<int?>() is int oi) SetOutput(oi);
-                            _settings.Save();
+                            if (IsRunning) { SendState(); return; }
+                            // Device names come from the device list (pw-dump
+                            // on Linux): resolved before the settings lock, which
+                            // the window thread takes.
+                            var inName = inputIndex is int ii ? AudioDevices.NameAt(AudioDevices.Inputs(), ii) : null;
+                            var outName = outputIndex is int oi ? AudioDevices.NameAt(AudioDevices.Outputs(), oi) : null;
+                            lock (_settingsLock)
+                            {
+                                if (inputIndex is int i2) SetInput(i2, inName!);
+                                if (outputIndex is int o2) SetOutput(o2, outName!);
+                                _settings.Save();
+                            }
+                            Start();
                         }
-                        Start();
-                    }
-                });
+                    });
+                }
                 break;
 
             case "stop":
@@ -154,15 +162,20 @@ public sealed class VoiceController : IDisposable
 
             // Remembering a device re-reads the device list, which on Linux
             // runs pw-dump (seconds while PipeWire restarts): off the
-            // window thread, like every other device listing.
+            // window thread and outside the settings lock (which the window
+            // thread takes), like every other device listing. The restart
+            // is decided when the pick arrives: a Start pressed right after
+            // a pick must not be followed by a second start.
             case "setInputDevice":
                 {
                     int index = msg["index"]?.Value<int?>() ?? 0;
+                    bool wasRunning = IsRunning || _loading;
                     RunOffUiThread(() =>
                     {
-                        lock (_settingsLock) { SetInput(index); _settings.Save(); }
+                        var name = AudioDevices.NameAt(AudioDevices.Inputs(), index);
+                        lock (_settingsLock) { SetInput(index, name); _settings.Save(); }
                         SendSavedToast();
-                        RestartIfRunning();
+                        if (wasRunning) RestartIfRunning();
                     });
                 }
                 break;
@@ -170,11 +183,13 @@ public sealed class VoiceController : IDisposable
             case "setOutputDevice":
                 {
                     int index = msg["index"]?.Value<int?>() ?? 0;
+                    bool wasRunning = IsRunning || _loading;
                     RunOffUiThread(() =>
                     {
-                        lock (_settingsLock) { SetOutput(index); _settings.Save(); }
+                        var name = AudioDevices.NameAt(AudioDevices.Outputs(), index);
+                        lock (_settingsLock) { SetOutput(index, name); _settings.Save(); }
                         SendSavedToast();
-                        RestartIfRunning();
+                        if (wasRunning) RestartIfRunning();
                     });
                 }
                 break;
@@ -185,18 +200,20 @@ public sealed class VoiceController : IDisposable
                 {
                     var mode = msg["mode"]?.ToString() ?? "";
                     int idx = mode == "auto" || mode == "off" ? -1 : msg["index"]?.Value<int?>() ?? -1;
+                    bool wasRunning = IsRunning || _loading;
                     RunOffUiThread(() =>
                     {
+                        var name = idx < 0 ? "" : AudioDevices.NameAt(AudioDevices.Outputs(), idx);
                         lock (_settingsLock)
                         {
                             _settings.MonitorDeviceIndex = idx;
-                            _settings.MonitorDeviceName = idx < 0 ? "" : AudioDevices.NameAt(AudioDevices.Outputs(), idx);
+                            _settings.MonitorDeviceName = name;
                             _settings.SidetoneAuto = mode == "auto" || (mode.Length == 0 && idx < 0 && _settings.SidetoneAuto);
                             _settings.Save();
                         }
                         SendSavedToast();
                         SendDevices();
-                        RestartIfRunning();
+                        if (wasRunning) RestartIfRunning();
                     });
                 }
                 break;
@@ -232,14 +249,21 @@ public sealed class VoiceController : IDisposable
                     if (picked == null || picked.Length == 0) break;
                     RunOffUiThread(() =>
                     {
-                        string? arrived = null;
+                        // Every file gets its own answer; the last one that
+                        // landed is the one adopted (its answer travels with it).
+                        string? arrived = null, arrivedNote = null;
                         foreach (var file in picked)
                         {
                             var (ok, message) = VoiceLibrary.Import(file, out var added);
-                            if (ok && added != null) arrived = added;
+                            if (ok && added != null)
+                            {
+                                if (arrived != null) _send("toast", new { ok = true, msg = arrivedNote });
+                                arrived = added;
+                                arrivedNote = message;
+                            }
                             else _send("toast", new { ok, msg = message });
                         }
-                        Arrived(arrived);
+                        Arrived(arrived, arrivedNote);
                     });
                 }
                 break;
@@ -255,15 +279,19 @@ public sealed class VoiceController : IDisposable
                 break;
 
             // Settings -> About: one zip with the logs, settings and machine
-            // description, in the data folder, which then opens.
+            // description, in the data folder, which then opens. The report
+            // lists the audio devices (pw-dump on Linux): off the window thread.
             case "saveReport":
-                try
+                RunOffUiThread(() =>
                 {
-                    var report = SupportReport.Write(Version);
-                    _send("toast", new { ok = true, msg = "Report saved: " + Path.GetFileName(report) + " — send that file along with what you saw" });
-                    OpenFolder(AppPaths.DataDir);
-                }
-                catch (Exception ex) { _send("toast", new { ok = false, msg = "Could not write the report: " + ex.Message }); }
+                    try
+                    {
+                        var report = SupportReport.Write(Version);
+                        _send("toast", new { ok = true, msg = "Report saved: " + Path.GetFileName(report) + " — send that file along with what you saw" });
+                        OpenFolder(AppPaths.DataDir);
+                    }
+                    catch (Exception ex) { _send("toast", new { ok = false, msg = "Could not write the report: " + ex.Message }); }
+                });
                 break;
 
             // A dropped file arrives from the page in pieces (the page has
@@ -298,7 +326,7 @@ public sealed class VoiceController : IDisposable
                     RunOffUiThread(() =>
                     {
                         var (ok, message) = VoiceLibrary.EndImport(name, out var added);
-                        if (ok && added != null) Arrived(added);
+                        if (ok && added != null) Arrived(added, message);
                         else
                         {
                             _send("toast", new { ok, msg = message });
@@ -478,7 +506,9 @@ public sealed class VoiceController : IDisposable
 
             // The loaded converter is shared with a session that may be
             // starting right now: its disposal happens under the session
-            // lock, where "running" and "loading" are both settled.
+            // lock, where "running" and "loading" are both settled. A
+            // running session's converter is the one it was built on (its
+            // key), whatever the chosen voice has become since.
             case "deleteVoice":
                 {
                     var id = Path.GetFileName(msg["id"]?.ToString() ?? "");
@@ -486,12 +516,13 @@ public sealed class VoiceController : IDisposable
                     {
                         lock (_sessionLock)
                         {
-                            if ((IsRunning || _loading) && id == _settings.VoiceId)
+                            bool busy = IsRunning || _loading;
+                            if (busy && (id == _settings.VoiceId || id == _converterKeyVoice))
                             {
                                 _send("toast", new { ok = false, msg = "Stop the voice before deleting it" });
                                 return;
                             }
-                            if (id == _converterKeyVoice) DisposeConverter();
+                            if (!busy && id == _converterKeyVoice) DisposeConverter();
                         }
                         if (VoiceLibrary.Delete(id))
                         {
@@ -651,16 +682,17 @@ public sealed class VoiceController : IDisposable
 
     private string _converterKeyVoice => _converterKey.Split('|')[0];
 
-    private void SetInput(int index)
+    // The name is resolved by the caller, outside the settings lock.
+    private void SetInput(int index, string name)
     {
         _settings.InputDeviceIndex = index;
-        _settings.InputDeviceName = AudioDevices.NameAt(AudioDevices.Inputs(), index);
+        _settings.InputDeviceName = name;
     }
 
-    private void SetOutput(int index)
+    private void SetOutput(int index, string name)
     {
         _settings.OutputDeviceIndex = index;
-        _settings.OutputDeviceName = AudioDevices.NameAt(AudioDevices.Outputs(), index);
+        _settings.OutputDeviceName = name;
     }
 
     // An output other programs read as a microphone: a VB-CABLE on Windows,
@@ -1021,9 +1053,17 @@ public sealed class VoiceController : IDisposable
             msg = head + "Less context (1 s) makes every pass cheaper.";
             action = new { label = "Use 1 s context", send = new { action = "config", extraMs = 1000 } };
         }
-        else
+        else if (gpuTier)
         {
             msg = head + "This machine is at its limit for real-time conversion; GPU acceleration is the fix.";
+            action = new { label = "Open Models", view = "models" };
+        }
+        else
+        {
+            // No supported graphics card, the block and context already
+            // eased: nothing on this machine can be switched on.
+            msg = head + "This machine is at its limit for real-time conversion with the largest block and least context; " +
+                  "a faster processor or a supported graphics card (see Models) would be needed to keep up.";
             action = new { label = "Open Models", view = "models" };
         }
         BootLog.Append($"pace advice: {msg}");
@@ -1149,7 +1189,10 @@ public sealed class VoiceController : IDisposable
     {
         var shown = Path.GetFileNameWithoutExtension(onnxId);
         _highlight = onnxId;
-        if (IsRunning && !string.Equals(_settings.VoiceId, onnxId, StringComparison.OrdinalIgnoreCase))
+        // A session that is loading counts as running: it comes up on the
+        // voice it was started with, and a changed choice would only make
+        // the page disagree with it.
+        if ((IsRunning || _loading) && !string.Equals(_settings.VoiceId, onnxId, StringComparison.OrdinalIgnoreCase))
         {
             _send("toast", new { ok = true, msg = $"{shown} {what} — press Use in the library to switch to it" });
         }
@@ -1173,14 +1216,25 @@ public sealed class VoiceController : IDisposable
     // A voice just landed in the library by any route (drop, dialog, Hub):
     // an export is adopted at once; a checkpoint is marked wanted, so the
     // conversion that follows adopts it when ready. Null = nothing landed.
+    // Whatever arrived, every checkpoint still waiting (one that came in
+    // the same zip or pick) is converted afterwards.
     private void Arrived(string? id, string? note = null)
     {
-        if (id == null) { SendVoices(); ConvertNextPending(); return; }
-        if (id.EndsWith(".onnx", StringComparison.OrdinalIgnoreCase)) { Adopt(id, "is in your library"); return; }
-        _wanted = id;
-        _highlight = id;
-        _send("toast", new { ok = true, msg = note ?? $"{Path.GetFileName(id)} added — converting to an ONNX voice now" });
-        SendVoices();
+        if (id != null && !id.EndsWith(".onnx", StringComparison.OrdinalIgnoreCase))
+        {
+            // A checkpoint whose conversion already exists: that is the voice.
+            var converted = Path.GetFileNameWithoutExtension(id) + ".onnx";
+            if (VoiceLibrary.Exists(converted)) id = converted;
+        }
+        if (id == null) { if (note != null) _send("toast", new { ok = true, msg = note }); SendVoices(); }
+        else if (id.EndsWith(".onnx", StringComparison.OrdinalIgnoreCase)) Adopt(id, "is in your library");
+        else
+        {
+            _wanted = id;
+            _highlight = id;
+            _send("toast", new { ok = true, msg = note ?? $"{Path.GetFileName(id)} added — converting to an ONNX voice now" });
+            SendVoices();
+        }
         ConvertNextPending();
     }
 
@@ -1201,12 +1255,19 @@ public sealed class VoiceController : IDisposable
 
     // ── speed check ────────────────────────────────────────────────
 
+    // A refusal answers on the "bench" channel too: the terminal run
+    // (--bench) waits for that answer, and a toast alone would leave it
+    // waiting for its whole timeout.
     private void RunBench()
     {
-        if (IsRunning || _loading) { _send("toast", new { ok = false, msg = "Stop the voice before running the speed check" }); return; }
-        if (!ModelManager.ComponentsReady() || _settings.VoiceId.Length == 0 || !VoiceLibrary.Exists(_settings.VoiceId))
+        string? refusal = null;
+        if (IsRunning || _loading) refusal = "Stop the voice before running the speed check";
+        else if (!ModelManager.ComponentsReady() || _settings.VoiceId.Length == 0 || !VoiceLibrary.Exists(_settings.VoiceId))
+            refusal = "The speed check needs the components and a chosen voice";
+        if (refusal != null)
         {
-            _send("toast", new { ok = false, msg = "The speed check needs the components and a chosen voice" });
+            _send("toast", new { ok = false, msg = refusal });
+            _send("bench", new { running = false, error = refusal });
             return;
         }
         if (Interlocked.Exchange(ref _benchRunning, 1) != 0) return;
@@ -1435,7 +1496,10 @@ public sealed class VoiceController : IDisposable
         try { _downloadCts?.Cancel(); } catch { }
         using (var done = new ManualResetEvent(false))
             if (_meterTimer.Dispose(done)) done.WaitOne(1000);
-        Stop("exiting");
-        DisposeConverter();
+        lock (_sessionLock)
+        {
+            Stop("exiting");
+            DisposeConverter();
+        }
     }
 }

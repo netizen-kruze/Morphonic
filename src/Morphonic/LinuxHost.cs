@@ -34,6 +34,9 @@ public static class LinuxHost
     // the data folder on purpose (see AppSettings.HasRunBefore).
     public static string ConfigHome => Env("XDG_CONFIG_HOME") ?? Path.Combine(Home, ".config");
 
+    // ~/.cache: WebKitGTK's page cache lands here under the binary's name.
+    public static string CacheHome => Env("XDG_CACHE_HOME") ?? Path.Combine(Home, ".cache");
+
     private static string? Env(string name)
     {
         var v = Environment.GetEnvironmentVariable(name);
@@ -273,9 +276,23 @@ public static class LinuxHost
             using (new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite)) { }
             var stream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
             try { stream.SetLength(0); stream.Write(Encoding.ASCII.GetBytes(Environment.ProcessId.ToString())); stream.Flush(); } catch { }
-            return stream;
+            return new InstanceLock(stream, path);
         }
         catch (IOException) { return null; }
         catch (Exception ex) { ErrorLog.WriteEntry("SingleInstance", ex); return new MemoryStream(); }
+    }
+
+    // The lock is the open handle; the file itself is tidied away on a
+    // clean exit so a support bundle never lists a stale lock.
+    private sealed class InstanceLock : IDisposable
+    {
+        private readonly FileStream _stream;
+        private readonly string _path;
+        public InstanceLock(FileStream stream, string path) { _stream = stream; _path = path; }
+        public void Dispose()
+        {
+            try { _stream.Dispose(); } catch { }
+            try { File.Delete(_path); } catch { }
+        }
     }
 }

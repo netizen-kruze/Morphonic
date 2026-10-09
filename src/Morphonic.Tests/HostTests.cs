@@ -275,6 +275,20 @@ public class AudioDeviceTests
     }
 
     [Fact]
+    public void LeftoverVirtualMicrophoneIsAdoptedOnlyFromADeadRunOfThisFolder()
+    {
+        var found = new[] { 16, 17 };
+        // no record (another data folder's instance, or made by hand): left alone
+        Assert.Empty(VirtualMic.ModulesToAdopt(found, null, _ => false));
+        // the recording process still runs: left alone
+        Assert.Empty(VirtualMic.ModulesToAdopt(found, new VirtualMic.Record(4242, new[] { 16, 17 }), pid => pid == 4242));
+        // dead owner: its modules, and only those still carrying our names
+        Assert.Equal(new[] { 16, 17 }, VirtualMic.ModulesToAdopt(found, new VirtualMic.Record(4242, new[] { 16, 17 }), _ => false));
+        Assert.Equal(new[] { 17 }, VirtualMic.ModulesToAdopt(found, new VirtualMic.Record(4242, new[] { 9, 17 }), _ => false));
+        Assert.Empty(VirtualMic.ModulesToAdopt(found, new VirtualMic.Record(4242, Array.Empty<int>()), _ => false));
+    }
+
+    [Fact]
     public void RecorderAndPlayerCommandsCarryTargetAndFormat()
     {
         // pw-record twice: with --raw (PipeWire 1.2+), then without (1.0, where a pipe is raw anyway)
@@ -286,6 +300,9 @@ public class AudioDeviceTests
         Assert.Contains("--target=alsa_input.usb-mic", rec[1].Args);
         Assert.Contains("--rate=16000", rec[0].Args);
         Assert.Equal("-", rec[1].Args[^1]);
+        // a chosen device must not be silently swapped for the default when it vanishes
+        Assert.Equal(new[] { "-P", PipeWireAudio.DontReconnect }, rec[0].Args.SkipWhile(a => a != "-P").Take(2));
+        Assert.DoesNotContain("-P", PipeWireAudio.CaptureCommands(null).First().Args);
         var play = PipeWireAudio.PlaybackCommands("morphonic_voice", 40000).ToList();
         Assert.Equal(new[] { "pw-play", "pw-play", "pacat", "aplay" }, play.Select(c => c.Label));
         Assert.Contains("--rate=40000", play[0].Args);

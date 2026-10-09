@@ -85,26 +85,82 @@ public static class VoiceLibrary
     }
 
     // The folders a picked file's parent says nothing about: the home
-    // folder itself and the usual landing places. A generic checkpoint from
-    // ~/Downloads must not become a voice called "Downloads".
-    private static readonly string[] UserFolders =
+    // folder itself, the usual landing places (by their English names and
+    // by the desktop's own configuration — localized "Téléchargements",
+    // "Descargas"), the voices folder, and mount points (a USB stick's
+    // root). A generic checkpoint from ~/Downloads must not become a voice
+    // called "Downloads".
+    private static readonly string[] UserFolderNames =
         { "downloads", "download", "desktop", "documents", "music", "videos", "pictures", "public", "tmp", "temp", "voices" };
 
-    internal static bool IsUserFolder(string dir)
+    internal static bool IsUserFolder(string dir) => IsUserFolder(dir, KnownUserFolders.Value);
+
+    internal static bool IsUserFolder(string dir, IReadOnlyCollection<string> knownFolders)
     {
         if (string.IsNullOrEmpty(dir)) return true;
         try
         {
-            var full = Path.GetFullPath(dir).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var full = Normalize(dir);
             var name = Path.GetFileName(full);
             if (name.Length == 0) return true;   // a drive or filesystem root
-            if (UserFolders.Contains(name.ToLowerInvariant())) return true;
-            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            if (home.Length > 0 && string.Equals(full, Path.GetFullPath(home).TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase)) return true;
-            if (string.Equals(full, Path.GetFullPath(Dir).TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase)) return true;
+            if (UserFolderNames.Contains(name.ToLowerInvariant())) return true;
+            if (knownFolders.Any(k => string.Equals(full, k, StringComparison.OrdinalIgnoreCase))) return true;
+            if (string.Equals(full, Normalize(Dir), StringComparison.OrdinalIgnoreCase)) return true;
+            // Mount points: /media/<x>, /media/<user>/<x>, /run/media/<user>/<x>, /mnt/<x>.
+            var parent = Path.GetDirectoryName(full) ?? "";
+            var grand = Path.GetDirectoryName(parent) ?? "";
+            if (parent is "/media" or "/mnt" || grand is "/media" or "/run/media") return true;
         }
         catch { }
         return false;
+    }
+
+    private static string Normalize(string p) =>
+        Path.GetFullPath(p).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+    // The user's own folders as the platform knows them: the profile, the
+    // special folders, and on Linux the XDG user-dirs file (localized names).
+    private static readonly Lazy<string[]> KnownUserFolders = new(() => ReadKnownUserFolders().ToArray());
+
+    private static IEnumerable<string> ReadKnownUserFolders()
+    {
+        var list = new List<string>();
+        void Add(string? p) { if (!string.IsNullOrEmpty(p)) { try { list.Add(Normalize(p)); } catch { } } }
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        Add(home);
+        foreach (var f in new[] { Environment.SpecialFolder.Desktop, Environment.SpecialFolder.DesktopDirectory, Environment.SpecialFolder.MyDocuments,
+                                  Environment.SpecialFolder.MyMusic, Environment.SpecialFolder.MyPictures, Environment.SpecialFolder.MyVideos })
+        {
+            try { Add(Environment.GetFolderPath(f)); } catch { }
+        }
+        if (home.Length > 0) Add(Path.Combine(home, "Downloads"));
+        if (OperatingSystem.IsLinux())
+        {
+            try
+            {
+                var file = Path.Combine(LinuxHost.ConfigHome, "user-dirs.dirs");
+                if (File.Exists(file))
+                    foreach (var p in ParseXdgUserDirs(File.ReadAllLines(file), home)) Add(p);
+            }
+            catch { }
+        }
+        return list;
+    }
+
+    // XDG_DOWNLOAD_DIR="$HOME/Téléchargements" -> /home/u/Téléchargements
+    internal static IEnumerable<string> ParseXdgUserDirs(IEnumerable<string> lines, string home)
+    {
+        foreach (var raw in lines)
+        {
+            var line = raw.Trim();
+            if (line.Length == 0 || line.StartsWith('#')) continue;
+            int eq = line.IndexOf('=');
+            if (eq <= 0 || !line.StartsWith("XDG_", StringComparison.Ordinal) || !line[..eq].EndsWith("_DIR", StringComparison.Ordinal)) continue;
+            var value = line[(eq + 1)..].Trim().Trim('"');
+            if (value.StartsWith("$HOME/", StringComparison.Ordinal)) value = Path.Combine(home, value[6..]);
+            else if (value == "$HOME") value = home;
+            if (value.Length > 0 && value.StartsWith('/')) yield return value.TrimEnd('/');
+        }
     }
 
     // The characters no file system of either desktop takes (Windows' set,
@@ -148,7 +204,11 @@ public static class VoiceLibrary
             var dest = Path.Combine(Dir, LibraryName(parent, Path.GetFileName(sourcePath)));
             if (string.Equals(Path.GetFullPath(dest), Path.GetFullPath(sourcePath), StringComparison.OrdinalIgnoreCase))
             {
-                added = Path.GetFileName(dest);
+                // Picked out of the library itself: an export is simply the
+                // voice to use; a checkpoint whose conversion exists means
+                // that conversion; a bare checkpoint is nothing new.
+                var converted = Path.Combine(Dir, Path.GetFileNameWithoutExtension(dest) + ".onnx");
+                added = ext == ".onnx" ? Path.GetFileName(dest) : File.Exists(converted) ? Path.GetFileName(converted) : null;
                 return (true, "that file is already in the voices folder");
             }
             var tmp = dest + ".importing";
@@ -465,7 +525,11 @@ public static class VoiceLibrary
                 WorkingDirectory = ToolsDir,
             };
             foreach (var p in python.Value.Prefix) psi.ArgumentList.Add(p);
-            psi.ArgumentList.Add("-I");
+            // Not "-I": isolated mode also drops the user site-packages, the
+            // very place "pip install --user" (Install fallback converter)
+            // puts PyTorch. The script and its working folder are the app's
+            // own tools folder; PYTHON* variables are ignored (-E).
+            psi.ArgumentList.Add("-E");
             psi.ArgumentList.Add(ExportScript);
             psi.ArgumentList.Add("voice");
             psi.ArgumentList.Add(source);
