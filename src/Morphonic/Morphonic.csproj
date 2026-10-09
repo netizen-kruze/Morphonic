@@ -93,7 +93,13 @@
     <!-- Windows virtual microphone driver, when built (build.ps1 -Driver):
          driver/package/MorphonicCable.{inf,sys,cat} -> driver/... -->
     <EmbeddedResource Include="../../driver/package/MorphonicCable.inf;../../driver/package/MorphonicCable.sys;../../driver/package/MorphonicCable.cat" Condition="Exists('../../driver/package/MorphonicCable.sys')">
-      <LogicalName>driver/%(Filename)%(Extension)</LogicalName>
+      <LogicalName>driver/own/%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <!-- Slot for VB-CABLE (VB-Audio, donationware; Microsoft-signed catalog)
+         should its author agree to it shipping inside Morphonic; the folder
+         does not exist in this repository, so nothing third-party is carried. -->
+    <EmbeddedResource Include="../../driver/vbcable/*" Condition="Exists('../../driver/vbcable/vbaudio_cable64_win10.sys')">
+      <LogicalName>driver/vbcable/%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
     <EmbeddedResource Include="Assets/*.template;Assets/*.recipe.json">
       <LogicalName>assets/%(Filename)%(Extension)</LogicalName>

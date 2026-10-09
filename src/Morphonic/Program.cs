@@ -273,8 +273,10 @@ internal static class Program
         "  --data-dir <dir>                   use another data folder (tools/smoke.*)\n" +
         "  --debug-port <n>                   (Windows) expose the page over the DevTools protocol for tools/ui_walkthrough.py\n" +
         "  --update-feed <url>                point Settings > Check for updates at another release document (tests)\n" +
-        "  --install-virtual-mic <dir>        (Windows, administrator) install the Morphonic Voice driver package in <dir>; Settings does this for you\n" +
-        "  --remove-virtual-mic               (Windows, administrator) remove it\n";
+        "  --install-virtual-mic <dir> [--inf <name> --hwid <id>]\n" +
+        "                                     (Windows, administrator) install the virtual microphone driver package in <dir>; Settings does this for you\n" +
+        "  --remove-virtual-mic [--inf <name> --hwid <id>]\n" +
+        "                                     (Windows, administrator) remove it\n";
 
     private static int Report(LinuxInstaller.Result result)
     {
@@ -409,9 +411,11 @@ internal static class Program
         bool ok; string message;
         try
         {
+            var inf = ArgValue(args, "--inf") ?? WindowsVirtualMic.VbCable.Inf;
+            var hwid = ArgValue(args, "--hwid") ?? WindowsVirtualMic.VbCable.HardwareId;
             (ok, message) = args.Contains("--install-virtual-mic")
-                ? WindowsVirtualMic.InstallElevated(ArgValue(args, "--install-virtual-mic") ?? "")
-                : WindowsVirtualMic.RemoveElevated();
+                ? WindowsVirtualMic.InstallElevated(ArgValue(args, "--install-virtual-mic") ?? "", inf, hwid)
+                : WindowsVirtualMic.RemoveElevated(inf, hwid);
         }
         catch (Exception ex) { ok = false; message = ex.Message; }
         if (ArgValue(args, "--log") is { } log)

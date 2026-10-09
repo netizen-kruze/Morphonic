@@ -93,6 +93,23 @@ The route is Microsoft's **Hardware Dev Center attestation signing**:
 Reference: [Driver code signing requirements](https://learn.microsoft.com/en-us/windows-hardware/drivers/dashboard/code-signing-reqs)
 and the Partner Center hardware-submission pages.
 
+## The VB-CABLE alternative (not shipped)
+
+VB-Audio's VB-CABLE is a virtual cable whose Windows 10/11 catalog
+already carries Microsoft's signature, and VB-Audio's licensing page says
+the package may be distributed with an application under its donationware
+conditions (the user sees it is VB-Audio's, can donate, and
+"www.vb-cable.com" / "VB-CABLE is a donationware, all participations are
+welcome" are shown), while the package's own readme asks for the author's
+agreement before integrating it into another installer. `WindowsVirtualMic`
+keeps a slot for it (`driver/vbcable/`, hardware id `VBAudioVACWDM`,
+"CABLE Input" → "CABLE Output"): with that agreement in hand, dropping
+the package's `vbMmeCable64_win10.inf`, `.cat`, both `.sys` files and
+`readme.txt` into that folder and rebuilding makes *Install* work on any
+PC. Without it the folder stays absent and nothing third-party ships;
+the Settings row sends the user to vb-audio.com instead and the app
+detects a cable the user installed.
+
 ## What is verified without the signature
 
 - The driver builds from source with the WDK (`build.ps1 -Driver`).

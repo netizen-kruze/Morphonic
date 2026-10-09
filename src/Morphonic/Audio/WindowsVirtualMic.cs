@@ -11,68 +11,97 @@ using System.Text.RegularExpressions;
 
 namespace Morphonic.Audio;
 
-// Windows: Morphonic's own virtual audio cable, a kernel driver built from
-// driver/MorphonicCable and carried inside this exe. Installed once from
-// Settings (one administrator prompt), it adds an output "Morphonic Voice"
-// and a microphone "Morphonic Microphone" that stay until removed; the
-// voice plays into the output and other programs read the microphone.
+// Windows: a virtual audio cable other programs read as a microphone,
+// carried inside this exe and installed from Settings with one
+// administrator prompt. Windows loads only kernel drivers Microsoft has
+// signed, so the exe carries two candidates and uses the first that is:
 //
-// Windows loads a kernel driver only when Microsoft has signed it
-// (attestation signing through the Hardware Dev Center, see
-// driver/README.md). An unsigned package is refused by Windows at the
-// install step, and that refusal is reported as it is.
+//   1. Morphonic's own cable (driver/MorphonicCable: "Morphonic Voice" ->
+//      "Morphonic Microphone"), once its package has been through the
+//      Hardware Dev Center;
+//   2. VB-CABLE by VB-Audio (www.vb-cable.com), a donationware driver whose
+//      Windows 10/11 catalog carries Microsoft's signature and whose
+//      licence allows shipping it inside an application: "CABLE Input"
+//      (the output Morphonic plays into) -> "CABLE Output" (the microphone
+//      other programs pick).
+//
+// Installing = creating the root-enumerated device and letting Windows
+// install the package for it through SetupAPI (what devcon install does);
+// removing = deleting that device and the package from the driver store.
 [SupportedOSPlatform("windows")]
 public static class WindowsVirtualMic
 {
-    public const string HardwareId = "Root\\MorphonicCable";
-    public const string RenderName = "Morphonic Voice";
-    public const string CaptureName = "Morphonic Microphone";
-    public const string InfName = "MorphonicCable.inf";
-    private static readonly string[] PackageFiles = { "MorphonicCable.inf", "MorphonicCable.sys", "MorphonicCable.cat" };
+    public sealed record Package(string Key, string Vendor, string Inf, string[] Files, string HardwareId,
+        string RenderName, string CaptureName, string Credit);
 
-    // The package is embedded as driver/<file> when the driver was built
-    // before publishing (build.ps1 -Driver); a build without it can still
-    // explain the situation.
-    public static bool PackageAvailable =>
-        PackageFiles.All(f => Assembly.GetExecutingAssembly().GetManifestResourceInfo("driver/" + f) != null);
+    public static readonly Package Own = new("own", "Morphonic", "MorphonicCable.inf",
+        new[] { "MorphonicCable.inf", "MorphonicCable.sys", "MorphonicCable.cat" },
+        "Root\\MorphonicCable", "Morphonic Voice", "Morphonic Microphone", "");
 
-    public static bool PackageSigned
+    public static readonly Package VbCable = new("vbcable", "VB-CABLE (VB-Audio)", "vbMmeCable64_win10.inf",
+        new[] { "vbMmeCable64_win10.inf", "vbaudio_cable64_win10.cat", "vbaudio_cable64_win10.sys", "vbaudio_cable64arm_win10.sys", "readme.txt" },
+        "VBAudioVACWDM", "CABLE Input", "CABLE Output",
+        "VB-CABLE is a donationware by VB-Audio (www.vb-cable.com); all participations are welcome.");
+
+    private static readonly Package[] Candidates = { Own, VbCable };
+
+    private static Stream? Resource(Package p, string file) =>
+        Assembly.GetExecutingAssembly().GetManifestResourceStream("driver/" + p.Key + "/" + file);
+
+    public static bool Carried(Package p) => p.Files.All(f => Assembly.GetExecutingAssembly().GetManifestResourceInfo("driver/" + p.Key + "/" + f) != null);
+
+    // Signed through Microsoft's Hardware Dev Center: the catalog names the
+    // "Microsoft Windows Hardware Compatibility Publisher".
+    public static bool Signed(Package p)
     {
-        get
-        {
-            var cat = Assembly.GetExecutingAssembly().GetManifestResourceStream("driver/MorphonicCable.cat");
-            if (cat == null) return false;
-            using var ms = new MemoryStream();
-            cat.CopyTo(ms);
-            // A catalog signed through the Hardware Dev Center carries the
-            // "Microsoft Windows Hardware Compatibility Publisher" chain.
-            return Encoding.Unicode.GetString(ms.ToArray()).Contains("Microsoft Windows Hardware", StringComparison.Ordinal) ||
-                   Encoding.ASCII.GetString(ms.ToArray()).Contains("Microsoft Windows Hardware", StringComparison.Ordinal);
-        }
+        var cat = p.Files.FirstOrDefault(f => f.EndsWith(".cat", StringComparison.OrdinalIgnoreCase));
+        if (cat == null) return false;
+        using var s = Resource(p, cat);
+        if (s == null) return false;
+        using var ms = new MemoryStream();
+        s.CopyTo(ms);
+        var bytes = ms.ToArray();
+        const string signer = "Microsoft Windows Hardware Compatibility Publisher";
+        return Encoding.ASCII.GetString(bytes).Contains(signer, StringComparison.Ordinal) ||
+               Encoding.Unicode.GetString(bytes).Contains(signer, StringComparison.Ordinal);
     }
 
-    // Installed = the device node exists; usable = its endpoints are present.
-    public static bool Installed => DevicesByHardwareId().Length > 0;
+    // The package Install would use: the first carried and signed one.
+    public static Package? Installable => Candidates.FirstOrDefault(p => Carried(p) && Signed(p));
+
+    // Any carried package (for the explanation when none is installable).
+    public static bool PackageAvailable => Candidates.Any(Carried);
+    public static bool PackageSigned => Installable != null;
+
+    // The package whose device is present on this machine, if any.
+    public static Package? Present => Candidates.FirstOrDefault(p => DevicePresent(p.HardwareId));
+    public static bool Installed => Present != null;
+
+    // The names the rest of the app routes by.
+    public static string RenderName => (Present ?? Installable ?? VbCable).RenderName;
+    public static string CaptureName => (Present ?? Installable ?? VbCable).CaptureName;
+    public static string Vendor => (Present ?? Installable ?? VbCable).Vendor;
+    public static string Credit => (Present ?? Installable ?? VbCable).Credit;
 
     public static string Status
     {
         get
         {
             if (!OperatingSystem.IsWindows()) return "n/a";
-            if (Installed) return "installed";
-            if (!PackageAvailable) return "this build carries no driver package";
-            return "not installed";
+            if (Present is { } p) return "installed (" + p.Vendor + ")";
+            if (Installable is { } i) return "not installed (" + i.Vendor + " ready)";
+            if (PackageAvailable) return "carried package is not signed";
+            return "this build carries no driver package";
         }
     }
 
-    public static string ExtractPackage()
+    public static string ExtractPackage(Package p)
     {
-        var dir = Path.Combine(AppPaths.DataDir, "driver");
+        var dir = Path.Combine(AppPaths.DataDir, "driver", p.Key);
         Directory.CreateDirectory(dir);
-        foreach (var f in PackageFiles)
+        foreach (var f in p.Files)
         {
-            using var src = Assembly.GetExecutingAssembly().GetManifestResourceStream("driver/" + f)
-                ?? throw new FileNotFoundException("the driver package is not part of this build: " + f);
+            using var src = Resource(p, f) ?? throw new FileNotFoundException("the driver package is not part of this build: " + f);
             using var dst = File.Create(Path.Combine(dir, f));
             src.CopyTo(dst);
         }
@@ -83,38 +112,38 @@ public static class WindowsVirtualMic
     // elevated for the SetupAPI calls. Returns the elevated run's message.
     public static (bool Ok, string Message) Install()
     {
-        if (!PackageAvailable) return (false, "this build carries no driver package (build.ps1 -Driver)");
+        var p = Installable;
+        if (p == null) return (false, PackageAvailable ? "the carried driver package is not signed by Microsoft, so Windows would refuse it" : "this build carries no driver package");
         string dir;
-        try { dir = ExtractPackage(); }
+        try { dir = ExtractPackage(p); }
         catch (Exception ex) { return (false, "could not unpack the driver: " + ex.Message); }
-        return RunElevated("--install-virtual-mic", dir);
+        return RunElevated(new[] { "--install-virtual-mic", dir, "--inf", p.Inf, "--hwid", p.HardwareId });
     }
 
-    public static (bool Ok, string Message) Remove() => RunElevated("--remove-virtual-mic", null);
+    public static (bool Ok, string Message) Remove()
+    {
+        var p = Present;
+        if (p == null) return (true, "no virtual microphone is installed");
+        return RunElevated(new[] { "--remove-virtual-mic", "--inf", p.Inf, "--hwid", p.HardwareId });
+    }
 
-    private static (bool Ok, string Message) RunElevated(string verb, string? arg)
+    private static (bool Ok, string Message) RunElevated(string[] verbArgs)
     {
         var log = Path.Combine(AppPaths.DataDir, "driver-install.log");
         try { File.Delete(log); } catch { }
-        var psi = new ProcessStartInfo(Environment.ProcessPath!)
-        {
-            UseShellExecute = true,
-            Verb = "runas",
-            WindowStyle = ProcessWindowStyle.Hidden,
-        };
-        psi.ArgumentList.Add(verb);
-        if (arg != null) psi.ArgumentList.Add(arg);
+        var psi = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = true, Verb = "runas", WindowStyle = ProcessWindowStyle.Hidden };
+        foreach (var a in verbArgs) psi.ArgumentList.Add(a);
         psi.ArgumentList.Add("--data-dir");
         psi.ArgumentList.Add(AppPaths.DataDir);
         psi.ArgumentList.Add("--log");
         psi.ArgumentList.Add(log);
         try
         {
-            using var p = Process.Start(psi) ?? throw new InvalidOperationException("the elevated process did not start");
-            p.WaitForExit();
+            using var proc = Process.Start(psi) ?? throw new InvalidOperationException("the elevated process did not start");
+            proc.WaitForExit();
             var message = File.Exists(log) ? File.ReadAllText(log).Trim() : "";
-            if (message.Length == 0) message = p.ExitCode == 0 ? "done" : $"the elevated step failed (exit {p.ExitCode})";
-            return (p.ExitCode == 0, message);
+            if (message.Length == 0) message = proc.ExitCode == 0 ? "done" : $"the elevated step failed (exit {proc.ExitCode})";
+            return (proc.ExitCode == 0, message);
         }
         catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
         {
@@ -131,11 +160,11 @@ public static class WindowsVirtualMic
     // devcon "install": create a root-enumerated device node with the
     // hardware id, register it, then let Windows pick the INF's driver for
     // it. Windows checks the package's signature here.
-    public static (bool Ok, string Message) InstallElevated(string packageDir)
+    public static (bool Ok, string Message) InstallElevated(string packageDir, string infName, string hardwareId)
     {
-        var inf = Path.Combine(packageDir, InfName);
+        var inf = Path.Combine(packageDir, infName);
         if (!File.Exists(inf)) return (false, "driver package not found: " + inf);
-        if (Installed) return (true, "the Morphonic virtual microphone is already installed");
+        if (DevicePresent(hardwareId)) return (true, "the virtual microphone is already installed");
 
         var classGuid = Guid.Empty;
         var className = new StringBuilder(64);
@@ -149,25 +178,25 @@ public static class WindowsVirtualMic
             var info = new SP_DEVINFO_DATA { cbSize = (uint)Marshal.SizeOf<SP_DEVINFO_DATA>() };
             if (!SetupDiCreateDeviceInfoW(set, className.ToString(), ref classGuid, null, IntPtr.Zero, DICD_GENERATE_ID, ref info))
                 return (false, "SetupDiCreateDeviceInfo: " + LastError());
-            var hwid = Encoding.Unicode.GetBytes(HardwareId + "\0\0");
+            var hwid = Encoding.Unicode.GetBytes(hardwareId + "\0\0");
             if (!SetupDiSetDeviceRegistryPropertyW(set, ref info, SPDRP_HARDWAREID, hwid, (uint)hwid.Length))
                 return (false, "SetupDiSetDeviceRegistryProperty: " + LastError());
             if (!SetupDiCallClassInstaller(DIF_REGISTERDEVICE, set, ref info))
                 return (false, "SetupDiCallClassInstaller(DIF_REGISTERDEVICE): " + LastError());
-            if (!UpdateDriverForPlugAndPlayDevicesW(IntPtr.Zero, HardwareId, inf, INSTALLFLAG_FORCE, out var reboot))
+            if (!UpdateDriverForPlugAndPlayDevicesW(IntPtr.Zero, hardwareId, inf, INSTALLFLAG_FORCE, out var reboot))
             {
                 var err = LastError();
-                // Undo the device node so the next attempt starts clean.
-                SetupDiCallClassInstaller(DIF_REMOVE, set, ref info);
-                return (false, "Windows refused the driver: " + err + (err.Contains("signature", StringComparison.OrdinalIgnoreCase) || err.Contains("signed", StringComparison.OrdinalIgnoreCase)
-                    ? " — the package in this build is not signed by Microsoft's Hardware Dev Center (see driver/README.md)" : ""));
+                SetupDiCallClassInstaller(DIF_REMOVE, set, ref info);   // leave no half-made device behind
+                return (false, "Windows refused the driver: " + err);
             }
-            return (true, "installed: output \"" + RenderName + "\" and microphone \"" + CaptureName + "\"" + (reboot ? " (a restart may be needed before they appear)" : ""));
+            var p = Candidates.FirstOrDefault(c => c.HardwareId.Equals(hardwareId, StringComparison.OrdinalIgnoreCase));
+            return (true, "installed: output \"" + (p?.RenderName ?? "?") + "\" and microphone \"" + (p?.CaptureName ?? "?") + "\"" +
+                          (reboot ? " — Windows asks for a restart before they appear" : ""));
         }
         finally { SetupDiDestroyDeviceInfoList(set); }
     }
 
-    public static (bool Ok, string Message) RemoveElevated()
+    public static (bool Ok, string Message) RemoveElevated(string infName, string hardwareId)
     {
         int removed = 0;
         var set = SetupDiGetClassDevsW(IntPtr.Zero, "ROOT", IntPtr.Zero, DIGCF_ALLCLASSES);
@@ -177,7 +206,7 @@ public static class WindowsVirtualMic
             var info = new SP_DEVINFO_DATA { cbSize = (uint)Marshal.SizeOf<SP_DEVINFO_DATA>() };
             for (uint i = 0; SetupDiEnumDeviceInfo(set, i, ref info); i++)
             {
-                if (!HardwareIdOf(set, ref info).Equals(HardwareId, StringComparison.OrdinalIgnoreCase)) continue;
+                if (!HardwareIdOf(set, ref info).Equals(hardwareId, StringComparison.OrdinalIgnoreCase)) continue;
                 if (SetupDiCallClassInstaller(DIF_REMOVE, set, ref info)) removed++;
                 else return (false, "could not remove the device: " + LastError());
             }
@@ -185,16 +214,16 @@ public static class WindowsVirtualMic
         finally { SetupDiDestroyDeviceInfoList(set); }
 
         // The driver package stays in the driver store until deleted.
-        var oem = FindOemInf(Capture("pnputil", "/enum-drivers"));
+        var oem = FindOemInf(Capture("pnputil", "/enum-drivers"), infName);
         if (oem != null) Capture("pnputil", "/delete-driver " + oem + " /uninstall /force");
-        return (true, removed == 0 && oem == null ? "the Morphonic virtual microphone was not installed"
+        return (true, removed == 0 && oem == null ? "the virtual microphone was not installed"
             : $"removed ({removed} device(s){(oem != null ? ", driver package " + oem : "")})");
     }
 
     // pnputil /enum-drivers lists blocks like:
     //   Published Name:     oem42.inf
-    //   Original Name:      morphoniccable.inf
-    internal static string? FindOemInf(string enumOutput)
+    //   Original Name:      vbmmecable64_win10.inf
+    internal static string? FindOemInf(string enumOutput, string infName)
     {
         string? published = null;
         foreach (var raw in enumOutput.Split('\n'))
@@ -202,38 +231,33 @@ public static class WindowsVirtualMic
             var line = raw.Trim();
             var m = Regex.Match(line, @"^Published Name\s*:\s*(oem\d+\.inf)", RegexOptions.IgnoreCase);
             if (m.Success) { published = m.Groups[1].Value; continue; }
-            if (Regex.IsMatch(line, @"^Original Name\s*:\s*" + Regex.Escape(InfName) + @"\s*$", RegexOptions.IgnoreCase) && published != null)
+            if (Regex.IsMatch(line, @"^Original Name\s*:\s*" + Regex.Escape(infName) + @"\s*$", RegexOptions.IgnoreCase) && published != null)
                 return published;
         }
         return null;
     }
 
-    private static string[] DevicesByHardwareId()
+    private static bool DevicePresent(string hardwareId)
     {
-        if (!OperatingSystem.IsWindows()) return Array.Empty<string>();
-        var found = new System.Collections.Generic.List<string>();
+        if (!OperatingSystem.IsWindows()) return false;
         var set = SetupDiGetClassDevsW(IntPtr.Zero, "ROOT", IntPtr.Zero, DIGCF_ALLCLASSES | DIGCF_PRESENT);
-        if (set == InvalidHandle) return Array.Empty<string>();
+        if (set == InvalidHandle) return false;
         try
         {
             var info = new SP_DEVINFO_DATA { cbSize = (uint)Marshal.SizeOf<SP_DEVINFO_DATA>() };
             for (uint i = 0; SetupDiEnumDeviceInfo(set, i, ref info); i++)
-            {
-                var id = HardwareIdOf(set, ref info);
-                if (id.Equals(HardwareId, StringComparison.OrdinalIgnoreCase)) found.Add(id);
-            }
+                if (HardwareIdOf(set, ref info).Equals(hardwareId, StringComparison.OrdinalIgnoreCase)) return true;
         }
         catch (Exception ex) { ErrorLog.WriteEntry("WindowsVirtualMic", ex); }
         finally { SetupDiDestroyDeviceInfoList(set); }
-        return found.ToArray();
+        return false;
     }
 
     private static string HardwareIdOf(IntPtr set, ref SP_DEVINFO_DATA info)
     {
         var buf = new byte[2048];
         if (!SetupDiGetDeviceRegistryPropertyW(set, ref info, SPDRP_HARDWAREID, out _, buf, (uint)buf.Length, out var needed)) return "";
-        var s = Encoding.Unicode.GetString(buf, 0, (int)Math.Min(needed, buf.Length));
-        return s.Split('\0')[0];
+        return Encoding.Unicode.GetString(buf, 0, (int)Math.Min(needed, buf.Length)).Split('\0')[0];
     }
 
     private static string Capture(string file, string args)

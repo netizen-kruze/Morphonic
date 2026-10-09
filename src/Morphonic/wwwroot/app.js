@@ -128,18 +128,20 @@ function renderDevices(p) {
     // Morphonic's own cable driver: installed once, then "Morphonic Voice"
     // (output) and "Morphonic Microphone" (input) exist for every program.
     $('rowVirtualMic').hidden = false;
-    $('tglVirtualMic').hidden = true;
+    // Installed (by Morphonic, or VB-CABLE the user set up): the toggle
+    // decides whether the voice is routed into it automatically.
+    $('tglVirtualMic').hidden = !p.virtualMicInstalled;
     $('btnInstallVirtualMic').hidden = p.virtualMicInstalled || !p.virtualMicPackage;
-    $('btnRemoveVirtualMic').hidden = !p.virtualMicInstalled;
+    $('btnRemoveVirtualMic').hidden = !(p.virtualMicInstalled && p.virtualMicPackage);
+    $('btnGetCable').hidden = p.virtualMicInstalled || p.virtualMicPackage;
     $('btnInstallVirtualMic').disabled = $('btnRemoveVirtualMic').disabled = !!p.virtualMicBusy;
     $('btnInstallVirtualMic').textContent = p.virtualMicBusy ? 'Installing…' : 'Install';
+    const credit = p.virtualMicCredit ? ' ' + p.virtualMicCredit : '';
     $('virtualMicDesc').textContent = p.virtualMicInstalled
-      ? 'Installed: other programs see "Morphonic Microphone" as a microphone. Leave Output on System default and the voice plays into "Morphonic Voice" by itself; Hear yourself (Auto) lets you listen along.'
+      ? `${p.virtualMicVendor} is installed: other programs pick "${p.virtualMicCapture}" as their microphone. With this switch on and Output on System default, the voice plays into "${p.virtualMicRender}" by itself, and Hear yourself (Auto) lets you listen along.${credit}`
       : p.virtualMicPackage
-        ? 'Adds "Morphonic Voice" (an output) and "Morphonic Microphone" (an input other programs can pick) with Morphonic\'s own driver. One administrator prompt; stays installed until removed here.'
-        : p.virtualMicUnsigned
-          ? 'Morphonic\'s driver is built into this app but not yet signed by Microsoft, and Windows only loads signed drivers, so it cannot be installed from this build. Until a signed release ships, use VB-CABLE: pick "CABLE Input" as the output and "CABLE Output" in the other program.'
-          : 'This build carries no driver package, so no virtual microphone can be installed from it. With VB-CABLE installed instead, pick "CABLE Input" as the output.';
+        ? `Installs ${p.virtualMicVendor}, a driver carried inside Morphonic: an output "${p.virtualMicRender}" the voice plays into, and an input "${p.virtualMicCapture}" that Discord, VRChat, OBS and games pick as their microphone. One administrator prompt; stays installed until removed here.${credit}`
+        : 'Other programs can only use the converted voice through a microphone device, which on Windows is a driver Microsoft must sign; Morphonic\'s own driver is built in but not signed, and no third-party driver ships with it. Install VB-CABLE (free, from vb-audio.com — the button opens the page, then run its setup as administrator and restart): Morphonic finds it on its own, plays the voice into "CABLE Input", and the other program picks "CABLE Output" as its microphone.';
   } else {
     $('tglVirtualMic').hidden = false;
     $('btnInstallVirtualMic').hidden = $('btnRemoveVirtualMic').hidden = true;
@@ -491,6 +493,7 @@ segSend('segRms', 'rmsMixRate', v => parseFloat(v));
 segSend('segGain', 'outputGainDb', v => parseInt(v, 10));
 segSend('segAccel', 'acceleration', v => v);
 $('btnInstallVirtualMic').addEventListener('click', () => send({ action: 'installVirtualMic' }));
+$('btnGetCable').addEventListener('click', () => send({ action: 'openUrl', url: 'https://vb-audio.com/Cable/' }));
 $('btnRemoveVirtualMic').addEventListener('click', () => send({ action: 'removeVirtualMic' }));
 toggleHandler($('tglVirtualMic'), () => {
   if (!dev) return;

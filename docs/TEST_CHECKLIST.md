@@ -128,9 +128,16 @@ Simulate a fresh machine: quit Morphonic, rename the data folder away
       converted voice, Hear yourself (Auto) plays it to you as well; Remove
       takes both away. On a build whose package is unsigned, Install ends
       with Windows' signature refusal shown in the toast and nothing changed.
-- [ ] Windows, with VB-CABLE installed instead: Output = CABLE Input, then
-      the other program with "CABLE Output" as the microphone hears the
-      converted voice, and you hear it too through Auto sidetone.
+- [ ] Windows, no cable installed: Settings → Virtual microphone explains
+      the driver situation and "Get VB-CABLE…" opens vb-audio.com in the
+      browser; nothing else is offered.
+- [ ] Windows, after the user installs VB-CABLE: the row says it is
+      installed and shows the automatic-routing switch (on by default);
+      with Output on System default the voice plays into "CABLE Input"
+      (`last_boot.log` "out:" names it), the other program with "CABLE
+      Output" as the microphone hears the converted voice, and Hear
+      yourself (Auto) plays it to you as well; switch off → the voice goes
+      to the default output again.
 - [ ] Device unplugged while idle → Rescan (changing a device) lists the new
       set; a saved device that is gone resolves to System default.
 

@@ -234,6 +234,17 @@ third-party cable (VB-CABLE) remains the Windows route, and
 voice, record CABLE Output as Discord would, measure the level) is ready
 for a machine that has one.
 
+**Decision: no signing, no third-party driver inside the app.** The
+publisher will not take the Hardware Dev Center route, and the one
+Microsoft-signed cable whose licence allows embedding (VB-CABLE) would
+need its author's written agreement, which is not in hand, so it was not
+added. The app keeps the complete install path for a signed package of
+its own (and a slot for VB-CABLE should that agreement come), and ships
+without either. For users the Settings row now says exactly that and
+offers *Get VB-CABLE…* (opens vb-audio.com); a VB-CABLE the user installs
+is detected by its hardware id, the automatic-routing switch appears, and
+with Output on System default the voice plays into "CABLE Input".
+
 ## What the walkthrough exercised
 
 Every check clicks the real buttons and reads the real page, the data

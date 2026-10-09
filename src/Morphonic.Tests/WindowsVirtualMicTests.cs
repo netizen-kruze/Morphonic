@@ -23,8 +23,12 @@ Provider Name:      Morphonic
 Class Name:         Sound, video and game controllers
 Driver Version:     10/08/2026 1.0.1.0
 ";
-        Assert.Equal("oem42.inf", WindowsVirtualMic.FindOemInf(listing));
-        Assert.Null(WindowsVirtualMic.FindOemInf(listing.Replace("morphoniccable.inf", "other.inf")));
-        Assert.Null(WindowsVirtualMic.FindOemInf(""));
+        Assert.Equal("oem42.inf", WindowsVirtualMic.FindOemInf(listing, "MorphonicCable.inf"));
+        Assert.Equal("oem3.inf", WindowsVirtualMic.FindOemInf(listing, "vbcable.inf"));
+        Assert.Null(WindowsVirtualMic.FindOemInf(listing, "vbMmeCable64_win10.inf"));
+        Assert.Null(WindowsVirtualMic.FindOemInf("", "MorphonicCable.inf"));
+        // the carried VB-CABLE package is the one Install uses until Morphonic's own is signed
+        Assert.Equal("VBAudioVACWDM", WindowsVirtualMic.VbCable.HardwareId);
+        Assert.Equal("CABLE Output", WindowsVirtualMic.VbCable.CaptureName);
     }
 }

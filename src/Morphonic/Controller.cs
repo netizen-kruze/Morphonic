@@ -993,7 +993,7 @@ public sealed class VoiceController : IDisposable
     // Links on the Voices screen (the libraries named there) and the
     // release page from the update check open in the system browser;
     // nothing a page could inject.
-    private static readonly string[] LinkHosts = { "huggingface.co", "weights.com", "www.weights.com", "voice-models.com", "www.voice-models.com", "applio.org", "www.applio.org", "github.com" };
+    private static readonly string[] LinkHosts = { "huggingface.co", "weights.com", "www.weights.com", "voice-models.com", "www.voice-models.com", "applio.org", "www.applio.org", "github.com", "vb-audio.com", "www.vb-audio.com" };
 
     private static void OpenUrl(string url)
     {
@@ -1188,6 +1188,10 @@ public sealed class VoiceController : IDisposable
             // through the Hardware Dev Center); an unsigned one is reported.
             virtualMicPackage = OperatingSystem.IsWindows() && WindowsVirtualMic.PackageAvailable && WindowsVirtualMic.PackageSigned,
             virtualMicUnsigned = OperatingSystem.IsWindows() && WindowsVirtualMic.PackageAvailable && !WindowsVirtualMic.PackageSigned,
+            virtualMicVendor = OperatingSystem.IsWindows() ? WindowsVirtualMic.Vendor : "",
+            virtualMicCredit = OperatingSystem.IsWindows() ? WindowsVirtualMic.Credit : "",
+            virtualMicRender = OperatingSystem.IsWindows() ? WindowsVirtualMic.RenderName : "",
+            virtualMicCapture = OperatingSystem.IsWindows() ? WindowsVirtualMic.CaptureName : "",
             virtualMicBusy = _virtualMicBusy,
             pitch = _settings.PitchSemitones,
             speakerId = _settings.SpeakerId,
