@@ -245,6 +245,34 @@ offers *Get VB-CABLE…* (opens vb-audio.com); a VB-CABLE the user installs
 is detected by its hardware id, the automatic-routing switch appears, and
 with Output on System default the voice plays into "CABLE Input".
 
+## 1.0.1 on Linux (Fedora 44, WSL 2 + WSLg)
+
+Both 1.0.1 Linux files were run in the Fedora 44 distribution after the
+1.0.1 changes: `Morphonic-1.0.1-linux-x64` prints its help, benches
+(177 ms per 250 ms block on the CPU share WSL gives it), starts a 25 s
+auto-started session (virtual microphone created, sidetone Auto on the
+default output, 82 passes), passes `tools/smoke.sh` 10 / 10, and shows the
+first-run screen on an empty data folder; `Morphonic-1.0.1-linux-x64-offline`
+keeps working with its 850 MB trailer (`--help`), unpacks the three
+included model files on `--fetch-models` with no network (all three
+verified against the pinned hashes) and starts with them. Nothing in
+`error.log` in any run.
+
+## Support report
+
+For a tester on another machine: **Settings → About → Save a report…**
+writes `Morphonic-report-<date>.zip` into the data folder (last_boot.log,
+error.log, bench.log, settings.json, the model manifest, a `system.txt`
+with the machine, the desktop / display environment variables, the audio
+devices the app sees, the virtual-microphone status, the Linux UI
+libraries and audio tools found on the path, and the data-folder listing)
+and opens the folder; `Morphonic --report` does the same from a terminal
+for the case where the window never opens. Verified: the button in the
+real window (toast names the zip, one new zip in the folder), `--report`
+on Windows (exit 0, three entries) and on Fedora 44 in WSL (seven lines of
+environment, both PipeWire and PulseAudio tools located, `xdg-open` missing
+noted — a real finding for a minimal install).
+
 ## What the walkthrough exercised
 
 Every check clicks the real buttons and reads the real page, the data

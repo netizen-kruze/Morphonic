@@ -212,6 +212,7 @@ $('btnGetVoices').addEventListener('click', () => showVoiceTab('get'));
 $('btnImport').addEventListener('click', () => send({ action: 'importVoice' }));
 $('btnOpenVoices').addEventListener('click', () => send({ action: 'openVoicesFolder' }));
 $('btnOpenData').addEventListener('click', () => send({ action: 'openDataFolder' }));
+$('btnSaveReport').addEventListener('click', () => send({ action: 'saveReport' }));
 
 // ── update check (Settings > About) ────────────────────────────
 let updateUrl = '';

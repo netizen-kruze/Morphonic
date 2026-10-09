@@ -46,8 +46,15 @@ internal static class Program
     {
         _bootTick = Environment.TickCount64;
         InstallCrashHandlers();
-        if (args.Any(a => a is "--help" or "-h" or "--bench" or "--install-gpu" or "--fetch-models" or "--pack-offline" or "--install" or "--uninstall" or "--convert")) WindowsHost.AttachParentConsole();
+        if (args.Any(a => a is "--help" or "-h" or "--bench" or "--install-gpu" or "--fetch-models" or "--pack-offline" or "--install" or "--uninstall" or "--convert" or "--report")) WindowsHost.AttachParentConsole();
         if (args.Contains("--help") || args.Contains("-h")) { Console.WriteLine(Usage); return 0; }
+        // A support bundle from the terminal: works when the window cannot open.
+        if (args.Contains("--report"))
+        {
+            if (ArgValue(args, "--data-dir") is { } rd) AppPaths.DataDir = Path.GetFullPath(rd);
+            try { Console.WriteLine("report written: " + SupportReport.Write(Version)); return 0; }
+            catch (Exception ex) { Console.Error.WriteLine("could not write the report: " + ex.Message); return 1; }
+        }
         if (args.Contains("--install")) return Report(LinuxInstaller.Install());
         if (args.Contains("--uninstall")) return Report(LinuxInstaller.Uninstall(purge: args.Contains("--purge")));
         if (ArgValue(args, "--data-dir") is { } dataDir) AppPaths.DataDir = Path.GetFullPath(dataDir);
@@ -270,6 +277,7 @@ internal static class Program
         "                                     write the offline build: this binary (or --base) with the catalog's model files inside (build.ps1 -Offline)\n" +
         "  Morphonic --install                    (Linux) copy this binary to ~/.local/share/Morphonic/app and add it to the app grid\n" +
         "  Morphonic --uninstall [--purge]        (Linux) remove that install; --purge also removes settings, voices and models\n" +
+        "  Morphonic --report                     write a support bundle (logs, settings, machine) as a zip in the data folder, print its path\n" +
         "  --data-dir <dir>                   use another data folder (tools/smoke.*)\n" +
         "  --debug-port <n>                   (Windows) expose the page over the DevTools protocol for tools/ui_walkthrough.py\n" +
         "  --update-feed <url>                point Settings > Check for updates at another release document (tests)\n" +

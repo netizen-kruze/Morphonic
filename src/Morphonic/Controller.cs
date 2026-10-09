@@ -225,6 +225,18 @@ public sealed class VoiceController : IDisposable
                 OpenFolder(AppPaths.DataDir);
                 break;
 
+            // Settings -> About: one zip with the logs, settings and machine
+            // description, in the data folder, which then opens.
+            case "saveReport":
+                try
+                {
+                    var report = SupportReport.Write(Version);
+                    _send("toast", new { ok = true, msg = "Report saved: " + Path.GetFileName(report) + " — send that file along with what you saw" });
+                    OpenFolder(AppPaths.DataDir);
+                }
+                catch (Exception ex) { _send("toast", new { ok = false, msg = "Could not write the report: " + ex.Message }); }
+                break;
+
             // A dropped file arrives from the page in pieces (the page has
             // no path to give); each piece is acknowledged so the page
             // never runs ahead of the disk.

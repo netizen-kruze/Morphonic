@@ -288,10 +288,13 @@ PyTorch — that is Python's own download, outside Morphonic.
   `error.log`, and does a safe boot.
 - Errors are logged to `error.log` in the data folder.
 
-Bug reports are welcome — please attach `error.log`, `last_boot.log` (what
-the app saw at its last start, including the machine it ran on) and, for
-anything speed-related, `bench.log` from **Settings → Speed check**.
-**Settings → About → Open folder** opens the folder they live in.
+Bug reports are welcome — **Settings → About → Save a report…** writes one
+zip with `error.log`, `last_boot.log` (what the app saw at its last start,
+including the machine it ran on), `bench.log`, your settings and a
+description of the machine into the data folder; attach that. If the
+window never opens, `Morphonic --report` from a terminal writes the same
+zip and prints its path. **Settings → About → Open folder** opens the
+folder they live in.
 
 ## Verifying on another machine
 

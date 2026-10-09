@@ -159,6 +159,10 @@ Simulate a fresh machine: quit Morphonic, rename the data folder away
       launching from the grid works; `--uninstall` removes it.
 - [ ] Settings → About → Open folder (next to the data folder path): the file
       manager opens the data folder, with `error.log` and `last_boot.log` in it.
+- [ ] Settings → About → Save a report…: a toast names the new
+      `Morphonic-report-<date>.zip`, the data folder opens, the zip holds the
+      logs, settings and `system.txt`; `Morphonic --report` from a terminal
+      prints the path of the same zip.
 
 ## F. Portable builds (ideally on a second machine)
 
