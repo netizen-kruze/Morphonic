@@ -51,6 +51,7 @@ public sealed class RealtimeEngine : IDisposable
     private readonly AutoResetEvent _wake = new(false);
     private Thread? _worker;
     private volatile bool _running;
+    private bool _workerStuck;
     private bool _primed;
     // Playback starts draining a little after the first block lands, so
     // the ring keeps a cushion against pass-to-pass timing jitter: the
@@ -136,13 +137,23 @@ public sealed class RealtimeEngine : IDisposable
         _worker.Start();
     }
 
-    public void Stop()
+    // Returns false when the worker did not come back within the grace
+    // period — a pass stuck inside the inference runtime. The converter it
+    // is inside must then be left alone (Controller abandons it): disposing
+    // a session under a running pass is a native crash, not an exception.
+    public bool Stop()
     {
         _running = false;
-        _wake.Set();
-        _worker?.Join(5000);
+        var worker = _worker;
         _worker = null;
+        if (worker == null) return !_workerStuck;
+        try { _wake.Set(); } catch (ObjectDisposedException) { }
+        if (worker.Join(5000)) return true;
+        _workerStuck = true;
+        return false;
     }
+
+    public bool WorkerStuck => _workerStuck;
 
     private void Loop()
     {
@@ -169,6 +180,9 @@ public sealed class RealtimeEngine : IDisposable
                 sw.Restart();
                 var outBlock = ProcessBlock(_blockBuf);
                 sw.Stop();
+                // Stopped during the pass: the session is gone, its summary
+                // written; this pass must not report into the next one's log.
+                if (!_running) return;
                 _output.Write(outBlock);
                 if (!_primed)
                 {
@@ -295,7 +309,7 @@ public sealed class RealtimeEngine : IDisposable
 
     public void Dispose()
     {
-        Stop();
-        _wake.Dispose();
+        // A stuck worker may still reach the event; it is leaked with it.
+        if (Stop()) _wake.Dispose();
     }
 }

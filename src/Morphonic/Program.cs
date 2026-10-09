@@ -35,7 +35,11 @@ internal static class Program
     private static long _lastPingAt;
     private static bool _autoStart;
     private const int PageConnectWatchdogMs = 20_000;
-    private const int HeartbeatTimeoutMs = 60_000;
+    // The page pings every 5 s. A browser that throttles a hidden page's
+    // timers (the window sits in the tray) may slow them to once a minute;
+    // the timeout stays well clear of that, so a healthy page is never
+    // reloaded for being hidden.
+    private const int HeartbeatTimeoutMs = 150_000;
 
     [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -128,7 +132,9 @@ internal static class Program
             }
             if (!LinuxHost.HasDisplay)
             {
-                Console.Error.WriteLine("Morphonic: no display (neither WAYLAND_DISPLAY nor DISPLAY is set) — the window cannot open.");
+                const string noDisplay = "no display (neither WAYLAND_DISPLAY nor DISPLAY is set) — the window cannot open";
+                Console.Error.WriteLine("Morphonic: " + noDisplay + ".");
+                ErrorLog.WriteNote("Display", noDisplay);   // so --report can say why a launch went nowhere
                 return 1;
             }
             // WebKitGTK's DMA-BUF renderer is known to blank or crash on the
@@ -155,6 +161,7 @@ internal static class Program
 
         var machineTask = Task.Run(() => MachineProfile.Describe());
         using var ctrl = new VoiceController(SendToUi);
+        _controller = ctrl;
         OnnxHost.Configure(ctrl.Settings.Acceleration);
         if (VirtualMic.Supported && ctrl.Settings.VirtualMic)
         {
@@ -163,11 +170,15 @@ internal static class Program
         }
 
         using var tray = OperatingSystem.IsWindows() ? new TrayService(Path.Combine(AppPaths.UiDir, "app.ico")) : null;
-        // The browser profile lives in the data folder. Photino's default is
-        // one folder shared by every Photino app on the machine, and WebView2
-        // refuses to start when that folder is already in use with different
-        // browser arguments: two apps open at once, or a lingering browser
-        // process, would leave this window blank.
+        // Windows: the WebView2 profile lives in the data folder. Photino's
+        // default is one folder shared by every Photino app on the machine,
+        // and WebView2 refuses to start when that folder is already in use
+        // with different browser arguments: two apps open at once, or a
+        // lingering browser process, would leave this window blank.
+        // Linux: Photino's WebKitGTK backend ignores this path and uses the
+        // default web context, which keeps its storage and cache under
+        // ~/.local/share/<binary name>/ and ~/.cache/<binary name>/
+        // (LinuxInstaller.Uninstall --purge removes them).
         _window = new PhotinoWindow()
             .SetLogVerbosity(0)
             .SetTemporaryFilesPath(Path.Combine(AppPaths.DataDir, "webview"))
@@ -201,17 +212,23 @@ internal static class Program
         }
         else
         {
+            // Closing the window quits; a start still loading its voice must
+            // not open the devices after the close.
+            _window.RegisterWindowClosingHandler((_, _) => { _exiting = true; ctrl.BeginShutdown(); return false; });
             var png = Path.Combine(AppPaths.UiDir, "app.png");
             if (File.Exists(png)) _window.SetIconFile(png);
             try
             {
                 _sigterm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, ctx => { ctx.Cancel = true; RequestExit("SIGTERM"); });
                 _sigint = PosixSignalRegistration.Create(PosixSignal.SIGINT, ctx => { ctx.Cancel = true; RequestExit("SIGINT"); });
+                // The terminal it was started from closed: the same clean exit
+                // (session summary, virtual microphone removed), not a kill.
+                _sighup = PosixSignalRegistration.Create(PosixSignal.SIGHUP, ctx => { ctx.Cancel = true; RequestExit("SIGHUP"); });
             }
             catch (Exception ex) { ErrorLog.WriteEntry("SignalHandlers", ex); }
         }
-        ctrl.PickFiles = () => _window.ShowOpenFile("Choose an RVC voice (.pth or .onnx)", null, true,
-            new[] { ("RVC voice", new[] { "*.pth", "*.onnx" }) });
+        ctrl.PickFiles = () => _window.ShowOpenFile("Choose an RVC voice (.pth, .onnx, or the .zip a voice library gave you)", null, true,
+            new[] { ("RVC voice", new[] { "*.pth", "*.onnx", "*.zip" }) });
         ctrl.RestartRequested += RestartApp;
         ctrl.ArmSafeBoot(unfinished != null);
         _autoStart = autoStart && unfinished == null;   // a safe boot never auto-starts
@@ -260,7 +277,13 @@ internal static class Program
         _window.WaitForClose();
         _exiting = true;
         ctrl.Stop("exiting");
-        if (VirtualMic.Supported) VirtualMic.Remove();
+        if (VirtualMic.Supported)
+        {
+            var had = VirtualMic.Status;
+            bool mine = VirtualMic.Owned;
+            VirtualMic.Remove();
+            if (OperatingSystem.IsLinux() && mine) BootLog.Append($"virtual mic: {VirtualMic.Status} (was: {had})");
+        }
         BootSentinel.Clear();
         return 0;
     }
@@ -273,6 +296,8 @@ internal static class Program
         "  Morphonic --bench                      Settings > Speed check from a terminal, report on stdout\n" +
         "  Morphonic --install-gpu                download GPU acceleration from a terminal, progress on stdout\n" +
         "  Morphonic --fetch-models [--no-voice]  the Models screen's downloads from a terminal (components, and the sample voice)\n" +
+        "  Morphonic --convert <in.wav> <out.wav> [--pitch <semitones>]\n" +
+        "                                     run a recording through the live pipeline with the chosen voice, to judge it without a microphone\n" +
         "  Morphonic --pack-offline <models dir> <out file> [--base <binary>]\n" +
         "                                     write the offline build: this binary (or --base) with the catalog's model files inside (build.ps1 -Offline)\n" +
         "  Morphonic --install                    (Linux) copy this binary to ~/.local/share/Morphonic/app and add it to the app grid\n" +
@@ -327,7 +352,8 @@ internal static class Program
         string? lastLine = null;
         manager.OnProgress += (id, done, total, stage) =>
         {
-            var line = $"  {(stage == ModelStage.Assemble ? "assembling" : "downloading")} {id}: {done / 1_000_000} / {total / 1_000_000} MB";
+            var verb = stage == ModelStage.Assemble ? "assembling" : OfflinePayload.Has(id) ? "unpacking" : "downloading";
+            var line = $"  {verb} {id}: {done / 1_000_000} / {total / 1_000_000} MB";
             if (line == lastLine) return;
             lastLine = line;
             Console.Write("\r" + line.PadRight(60));
@@ -337,7 +363,9 @@ internal static class Program
         {
             if (noVoice && m.Kind == ModelKind.Voice) continue;
             if (ModelManager.IsInstalled(m)) { Console.WriteLine($"{m.DisplayName}: already installed"); continue; }
-            Console.WriteLine($"{m.DisplayName}: {m.DownloadBytes / 1_000_000} MB from {m.Download.Url}" + (m.Assembled ? " (assembled here)" : ""));
+            Console.WriteLine(OfflinePayload.Has(m.Id)
+                ? $"{m.DisplayName}: {m.SizeBytes / 1_000_000} MB included in this build, no download"
+                : $"{m.DisplayName}: {m.DownloadBytes / 1_000_000} MB from {m.Download.Url}" + (m.Assembled ? " (assembled here)" : ""));
             var (ok, error) = manager.DownloadAsync(m.Id).GetAwaiter().GetResult();
             Console.WriteLine();
             Console.WriteLine(ok ? $"  {m.File.FileName}: verified, {m.SizeBytes / 1_000_000} MB" : "  FAILED: " + error);
@@ -440,13 +468,16 @@ internal static class Program
         return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
     }
 
-    private static PosixSignalRegistration? _sigterm, _sigint;
+    private static PosixSignalRegistration? _sigterm, _sigint, _sighup;
+    private static VoiceController? _controller;
 
     private static void RequestExit(string why)
     {
         if (_exiting) return;
         _exiting = true;
         BootLog.Append($"exit requested by {why}");
+        // A start still loading its voice must not open the devices after this.
+        _controller?.BeginShutdown();
         CloseWindowOrExit();
         _ = Task.Delay(10_000).ContinueWith(_ => { try { Environment.Exit(0); } catch { } });
     }

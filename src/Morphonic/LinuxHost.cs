@@ -34,13 +34,31 @@ public static class LinuxHost
     // the data folder on purpose (see AppSettings.HasRunBefore).
     public static string ConfigHome => Env("XDG_CONFIG_HOME") ?? Path.Combine(Home, ".config");
 
+    // ~/.cache: WebKitGTK's page cache lands here under the binary's name.
+    public static string CacheHome => Env("XDG_CACHE_HOME") ?? Path.Combine(Home, ".cache");
+
     private static string? Env(string name)
     {
         var v = Environment.GetEnvironmentVariable(name);
         return string.IsNullOrWhiteSpace(v) ? null : v;
     }
 
-    public static bool HasDisplay => Env("WAYLAND_DISPLAY") != null || Env("DISPLAY") != null;
+    // A Wayland display counts only when its socket exists: WAYLAND_DISPLAY
+    // lingers in ssh sessions and stale environments, and GTK aborts on a
+    // dead socket instead of saying so (GDK falls back to X11 by itself when
+    // DISPLAY is set, so that case is left to it).
+    public static bool HasDisplay => Env("DISPLAY") != null || WaylandSocketPresent(Env("WAYLAND_DISPLAY"), Env("XDG_RUNTIME_DIR"));
+
+    internal static bool WaylandSocketPresent(string? display, string? runtimeDir)
+    {
+        if (display == null) return false;
+        try
+        {
+            var path = Path.IsPathRooted(display) ? display : runtimeDir == null ? null : Path.Combine(runtimeDir, display);
+            return path != null && (File.Exists(path) || Directory.Exists(path));
+        }
+        catch { return false; }
+    }
 
     // ── environment ────────────────────────────────────────────────
 
@@ -250,10 +268,23 @@ public static class LinuxHost
             if (scout) StripSteamPreload(psi);
             using var p = Process.Start(psi);
             if (p == null) return null;
+            // This process is the one Steam (or a terminal) will signal: the
+            // child is the app, so each signal is passed on to it.
+            using var term = PosixSignalRegistration.Create(PosixSignal.SIGTERM, ctx => { ctx.Cancel = true; Forward(p, 15); });
+            using var intr = PosixSignalRegistration.Create(PosixSignal.SIGINT, ctx => { ctx.Cancel = true; Forward(p, 2); });
+            using var hup = PosixSignalRegistration.Create(PosixSignal.SIGHUP, ctx => { ctx.Cancel = true; Forward(p, 1); });
             p.WaitForExit();
             return p.ExitCode;
         }
         catch { return null; }
+    }
+
+    [DllImport("libc.so.6", SetLastError = true)]
+    private static extern int kill(int pid, int sig);
+
+    private static void Forward(Process p, int sig)
+    {
+        try { if (!p.HasExited) kill(p.Id, sig); } catch { }
     }
 
     // ── single instance ────────────────────────────────────────────
@@ -273,9 +304,23 @@ public static class LinuxHost
             using (new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite)) { }
             var stream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
             try { stream.SetLength(0); stream.Write(Encoding.ASCII.GetBytes(Environment.ProcessId.ToString())); stream.Flush(); } catch { }
-            return stream;
+            return new InstanceLock(stream, path);
         }
         catch (IOException) { return null; }
         catch (Exception ex) { ErrorLog.WriteEntry("SingleInstance", ex); return new MemoryStream(); }
+    }
+
+    // The lock is the open handle; the file itself is tidied away on a
+    // clean exit so a support bundle never lists a stale lock.
+    private sealed class InstanceLock : IDisposable
+    {
+        private readonly FileStream _stream;
+        private readonly string _path;
+        public InstanceLock(FileStream stream, string path) { _stream = stream; _path = path; }
+        public void Dispose()
+        {
+            try { _stream.Dispose(); } catch { }
+            try { File.Delete(_path); } catch { }
+        }
     }
 }

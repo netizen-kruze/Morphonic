@@ -113,7 +113,7 @@ public class AppSettings
             // next Save would then persist defaults over the user's choices).
             // Log it, keep a copy for diagnosis, and fall back to the
             // previous good save that Save() leaves as .bak.
-            ErrorLog.WriteEntry("AppSettings.Load", ex);
+            ErrorLog.WriteNote("AppSettings.Load", $"settings file unreadable ({ex.Message.Split('\n')[0]}); a copy is kept as settings.json.corrupt");
             try { File.Copy(path, path + ".corrupt", overwrite: true); } catch { }
             var bak = path + ".bak";
             if (File.Exists(bak))
@@ -123,7 +123,11 @@ public class AppSettings
                     var restored = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(bak), OnDisk);
                     if (restored != null)
                     {
-                        ErrorLog.WriteNote("AppSettings.Load", "settings file was unreadable; restored the previous good copy (settings.json.bak)");
+                        // The good copy takes the live file's place now: left
+                        // as it was, the next Save would move the damaged
+                        // file into .bak and destroy the only good copy.
+                        try { File.Copy(bak, path, overwrite: true); } catch (Exception ex3) { ErrorLog.WriteEntry("AppSettings.Load(restore)", ex3); }
+                        ErrorLog.WriteNote("AppSettings.Load", "restored the previous good copy (settings.json.bak)");
                         LastLoadSource = "backup (settings.json.bak) — the settings file was unreadable";
                         return restored;
                     }

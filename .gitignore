@@ -16,4 +16,6 @@ TestResults/
 # downloaded weights never belong in the repository
 *.pth
 *.onnx
+# ... except the tests' tiny hand-made checkpoint (a few KB, no weights)
+!src/Morphonic.Tests/Fixtures/tiny_voice.pth
 __pycache__/

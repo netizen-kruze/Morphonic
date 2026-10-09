@@ -72,17 +72,105 @@ public static class VoiceLibrary
     {
         var fileName = Path.GetFileName(path.Replace('\\', '/'));
         var ext = Path.GetExtension(fileName);
-        if (!IsGenericName(fileName)) return Sanitize(Path.GetFileNameWithoutExtension(fileName)) + ext;
+        var own = Sanitize(Path.GetFileNameWithoutExtension(fileName));
+        if (!IsGenericName(fileName)) return own + ext;
         var from = origin.Contains('/') ? origin[(origin.LastIndexOf('/') + 1)..] : origin;
         var folder = path.Replace('\\', '/').Contains('/') ? Path.GetFileName(Path.GetDirectoryName(path.Replace('\\', '/'))!) : "";
         var stem = Sanitize(from);
         if (folder.Length > 0 && !IsGenericName(folder + ".x")) stem = Sanitize(from + " " + folder);
-        return (stem.Length > 0 ? stem : "voice") + ext;
+        // No usable origin (a file picked straight out of Downloads): the
+        // file's own name, generic as it is, beats inventing one.
+        if (stem.Length == 0) stem = own.Length > 0 ? own : "voice";
+        return stem + ext;
     }
+
+    // The folders a picked file's parent says nothing about: the home
+    // folder itself, the usual landing places (by their English names and
+    // by the desktop's own configuration — localized "Téléchargements",
+    // "Descargas"), the voices folder, and mount points (a USB stick's
+    // root). A generic checkpoint from ~/Downloads must not become a voice
+    // called "Downloads".
+    private static readonly string[] UserFolderNames =
+        { "downloads", "download", "desktop", "documents", "music", "videos", "pictures", "public", "tmp", "temp", "voices" };
+
+    internal static bool IsUserFolder(string dir) => IsUserFolder(dir, KnownUserFolders.Value);
+
+    internal static bool IsUserFolder(string dir, IReadOnlyCollection<string> knownFolders)
+    {
+        if (string.IsNullOrEmpty(dir)) return true;
+        try
+        {
+            var full = Normalize(dir);
+            var name = Path.GetFileName(full);
+            if (name.Length == 0) return true;   // a drive or filesystem root
+            if (UserFolderNames.Contains(name.ToLowerInvariant())) return true;
+            if (knownFolders.Any(k => string.Equals(full, k, StringComparison.OrdinalIgnoreCase))) return true;
+            if (string.Equals(full, Normalize(Dir), StringComparison.OrdinalIgnoreCase)) return true;
+            // Mount points: /media/<x>, /media/<user>/<x>, /run/media/<user>/<x>, /mnt/<x>.
+            var parent = Path.GetDirectoryName(full) ?? "";
+            var grand = Path.GetDirectoryName(parent) ?? "";
+            if (parent is "/media" or "/mnt" || grand is "/media" or "/run/media") return true;
+        }
+        catch { }
+        return false;
+    }
+
+    private static string Normalize(string p) =>
+        Path.GetFullPath(p).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+    // The user's own folders as the platform knows them: the profile, the
+    // special folders, and on Linux the XDG user-dirs file (localized names).
+    private static readonly Lazy<string[]> KnownUserFolders = new(() => ReadKnownUserFolders().ToArray());
+
+    private static IEnumerable<string> ReadKnownUserFolders()
+    {
+        var list = new List<string>();
+        void Add(string? p) { if (!string.IsNullOrEmpty(p)) { try { list.Add(Normalize(p)); } catch { } } }
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        Add(home);
+        foreach (var f in new[] { Environment.SpecialFolder.Desktop, Environment.SpecialFolder.DesktopDirectory, Environment.SpecialFolder.MyDocuments,
+                                  Environment.SpecialFolder.MyMusic, Environment.SpecialFolder.MyPictures, Environment.SpecialFolder.MyVideos })
+        {
+            try { Add(Environment.GetFolderPath(f)); } catch { }
+        }
+        if (home.Length > 0) Add(Path.Combine(home, "Downloads"));
+        if (OperatingSystem.IsLinux())
+        {
+            try
+            {
+                var file = Path.Combine(LinuxHost.ConfigHome, "user-dirs.dirs");
+                if (File.Exists(file))
+                    foreach (var p in ParseXdgUserDirs(File.ReadAllLines(file), home)) Add(p);
+            }
+            catch { }
+        }
+        return list;
+    }
+
+    // XDG_DOWNLOAD_DIR="$HOME/Téléchargements" -> /home/u/Téléchargements
+    internal static IEnumerable<string> ParseXdgUserDirs(IEnumerable<string> lines, string home)
+    {
+        foreach (var raw in lines)
+        {
+            var line = raw.Trim();
+            if (line.Length == 0 || line.StartsWith('#')) continue;
+            int eq = line.IndexOf('=');
+            if (eq <= 0 || !line.StartsWith("XDG_", StringComparison.Ordinal) || !line[..eq].EndsWith("_DIR", StringComparison.Ordinal)) continue;
+            var value = line[(eq + 1)..].Trim().Trim('"');
+            if (value.StartsWith("$HOME/", StringComparison.Ordinal)) value = Path.Combine(home, value[6..]);
+            else if (value == "$HOME") value = home;
+            if (value.Length > 0 && value.StartsWith('/')) yield return value.TrimEnd('/');
+        }
+    }
+
+    // The characters no file system of either desktop takes (Windows' set,
+    // which covers Linux's), always — the voices folder may be synced or
+    // copied to the other platform, so a name must work on both.
+    private static readonly char[] UnsafeNameChars = { '<', '>', ':', '"', '/', '\\', '|', '?', '*' };
 
     private static string Sanitize(string s)
     {
-        var chars = s.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? ' ' : c == '_' ? ' ' : c).ToArray();
+        var chars = s.Select(c => c < ' ' || UnsafeNameChars.Contains(c) ? ' ' : c == '_' ? ' ' : c).ToArray();
         var collapsed = System.Text.RegularExpressions.Regex.Replace(new string(chars), @"\s+", " ").Trim(' ', '.');
         return collapsed.Length > 80 ? collapsed[..80].TrimEnd() : collapsed;
     }
@@ -90,23 +178,43 @@ public static class VoiceLibrary
     // Copies a file the user picked into the library. The .index files
     // that come with RVC voices are not used (feature retrieval is not
     // part of this pipeline), so they are not copied.
-    public static (bool Ok, string Message) Import(string sourcePath)
+    public static (bool Ok, string Message) Import(string sourcePath) => Import(sourcePath, out _);
+
+    // `added`: the library id of the voice that landed (for a zip, the
+    // checkpoint or export it held — an .onnx first), null when none did.
+    public static (bool Ok, string Message) Import(string sourcePath, out string? added)
     {
+        added = null;
         try
         {
             var ext = Path.GetExtension(sourcePath).ToLowerInvariant();
-            if (ext == ".zip") return ImportZip(sourcePath);
+            if (ext == ".zip")
+            {
+                var r = ImportZip(sourcePath, out var fromZip);
+                added = PickAdopted(fromZip);
+                return r;
+            }
             if (ext is not (".onnx" or ".pth"))
                 return (false, "pick an RVC voice: a .pth checkpoint (converted here), an .onnx export, or the .zip a voice library gave you");
             Directory.CreateDirectory(Dir);
-            // "…\SpongeBob\model.pth" picked from disk becomes "SpongeBob.pth"
-            var parent = Path.GetFileName(Path.GetDirectoryName(Path.GetFullPath(sourcePath)) ?? "") ?? "";
+            // "…/SpongeBob/model.pth" picked from disk becomes "SpongeBob.pth";
+            // "~/Downloads/model.pth" keeps its own name.
+            var parentDir = Path.GetDirectoryName(Path.GetFullPath(sourcePath)) ?? "";
+            var parent = IsUserFolder(parentDir) ? "" : Path.GetFileName(parentDir);
             var dest = Path.Combine(Dir, LibraryName(parent, Path.GetFileName(sourcePath)));
             if (string.Equals(Path.GetFullPath(dest), Path.GetFullPath(sourcePath), StringComparison.OrdinalIgnoreCase))
+            {
+                // Picked out of the library itself: an export is simply the
+                // voice to use; a checkpoint whose conversion exists means
+                // that conversion; a bare checkpoint is nothing new.
+                var converted = Path.Combine(Dir, Path.GetFileNameWithoutExtension(dest) + ".onnx");
+                added = ext == ".onnx" ? Path.GetFileName(dest) : File.Exists(converted) ? Path.GetFileName(converted) : null;
                 return (true, "that file is already in the voices folder");
+            }
             var tmp = dest + ".importing";
             File.Copy(sourcePath, tmp, overwrite: true);
             File.Move(tmp, dest, overwrite: true);
+            added = Path.GetFileName(dest);
             return (true, ext == ".pth"
                 ? $"{Path.GetFileName(dest)} added — converting to an ONNX voice now"
                 : $"{Path.GetFileName(dest)} added");
@@ -118,15 +226,23 @@ public static class VoiceLibrary
         }
     }
 
+    // The voice to make active out of what a zip held: an export runs as
+    // it is, a checkpoint after conversion; null for nothing.
+    internal static string? PickAdopted(IReadOnlyList<string> added) =>
+        added.FirstOrDefault(n => n.EndsWith(".onnx", StringComparison.OrdinalIgnoreCase)) ?? added.FirstOrDefault();
+
+    public static (bool Ok, string Message) ImportZip(string zipPath) => ImportZip(zipPath, out _);
+
     // Voice libraries hand out zips holding the .pth (and an .index the
     // app does not use, plus sometimes a readme). Only the voice files
     // are taken, by their own names: no folders from the archive.
-    public static (bool Ok, string Message) ImportZip(string zipPath)
+    // `added` lists the library ids that landed.
+    public static (bool Ok, string Message) ImportZip(string zipPath, out List<string> added)
     {
+        added = new List<string>();
         try
         {
             Directory.CreateDirectory(Dir);
-            var added = new List<string>();
             // "Voice.zip" holding "model.pth" gives a voice called "Voice".
             var bundle = Path.GetFileName(zipPath);
             if (bundle.EndsWith(".importing", StringComparison.OrdinalIgnoreCase)) bundle = bundle[..^".importing".Length];
@@ -204,8 +320,13 @@ public static class VoiceLibrary
         try { File.Delete(ImportingPath(name)); } catch { }
     }
 
-    public static (bool Ok, string Message) EndImport(string name)
+    public static (bool Ok, string Message) EndImport(string name) => EndImport(name, out _);
+
+    // `added`: the library id of the voice that landed (a zip's content,
+    // not the zip), null when the import failed.
+    public static (bool Ok, string Message) EndImport(string name, out string? added)
     {
+        added = null;
         name = Path.GetFileName(name);
         var tmp = ImportingPath(name);
         if (!File.Exists(tmp)) return (false, $"{name}: nothing was received");
@@ -213,12 +334,14 @@ public static class VoiceLibrary
         {
             if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
             {
-                var r = ImportZip(tmp);
+                var r = ImportZip(tmp, out var fromZip);
                 File.Delete(tmp);
+                if (r.Ok) added = PickAdopted(fromZip);
                 return r;
             }
             var dest = Path.Combine(Dir, name);
             File.Move(tmp, dest, overwrite: true);
+            added = name;
             return (true, name.EndsWith(".pth", StringComparison.OrdinalIgnoreCase)
                 ? $"{name} added — converting to an ONNX voice now"
                 : $"{name} added");
@@ -402,7 +525,11 @@ public static class VoiceLibrary
                 WorkingDirectory = ToolsDir,
             };
             foreach (var p in python.Value.Prefix) psi.ArgumentList.Add(p);
-            psi.ArgumentList.Add("-I");
+            // Not "-I": isolated mode also drops the user site-packages, the
+            // very place "pip install --user" (Install fallback converter)
+            // puts PyTorch. The script and its working folder are the app's
+            // own tools folder; PYTHON* variables are ignored (-E).
+            psi.ArgumentList.Add("-E");
             psi.ArgumentList.Add(ExportScript);
             psi.ArgumentList.Add("voice");
             psi.ArgumentList.Add(source);

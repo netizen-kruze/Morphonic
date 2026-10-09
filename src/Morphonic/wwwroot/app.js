@@ -320,6 +320,8 @@ function renderHubFiles(p) {
   box.innerHTML = files.map(f => `<span class="file" data-file="${esc(f.path)}"><span class="grow">${esc(f.path)}${f.libraryName && f.libraryName !== f.path.split('/').pop() ? ` <span class="meta">→ ${esc(f.libraryName)}</span>` : ''}</span><span>${MB(f.sizeBytes)}</span>
     <button class="chipbtn ${f.inLibrary ? '' : 'amber'}" data-dlfile="${esc(f.path)}">${f.inLibrary ? 'Use' : 'Download'}</button></span>`).join('');
   box.querySelectorAll('[data-dlfile]').forEach(b => b.addEventListener('click', () => {
+    // while the download runs the same button reads Cancel
+    if (b.dataset.mode === 'cancel') { send({ action: 'cancelVoiceDownload' }); return; }
     const f = files.find(x => x.path === b.dataset.dlfile);
     b.disabled = true;
     // already in the library: the app answers by choosing it (no download)
@@ -331,13 +333,14 @@ function onVoiceProgress(p) {
   document.querySelectorAll('[data-file]').forEach(el => {
     if (!el.dataset.file.endsWith('/' + name) && el.dataset.file !== name) return;
     let bar = el.querySelector('.progress');
+    const b = el.querySelector('button');
     if (p.done) {
       if (bar) bar.remove();
-      const b = el.querySelector('button');
-      if (b) { b.disabled = false; b.textContent = p.ok ? 'Use' : 'Download'; b.classList.toggle('amber', !p.ok); }
+      if (b) { delete b.dataset.mode; b.disabled = false; b.textContent = p.ok ? 'Use' : 'Download'; b.classList.toggle('amber', !p.ok); }
       return;
     }
     if (!bar) { bar = document.createElement('div'); bar.className = 'progress'; bar.innerHTML = '<i style="width:0%"></i>'; el.insertBefore(bar, el.querySelector('button')); }
+    if (b && b.dataset.mode !== 'cancel') { b.dataset.mode = 'cancel'; b.textContent = 'Cancel'; b.classList.remove('amber'); b.disabled = false; }
     const pct = p.total ? Math.round(p.received / p.total * 100) : 0;
     bar.querySelector('i').style.width = pct + '%';
   });

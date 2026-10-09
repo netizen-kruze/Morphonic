@@ -99,6 +99,13 @@ public static class LinuxInstaller
             if (Directory.Exists(data)) Directory.Delete(data, recursive: true);
             var marker = Path.Combine(LinuxHost.ConfigHome, "Morphonic");
             if (Directory.Exists(marker)) Directory.Delete(marker, recursive: true);
+            // WebKitGTK keeps the page's storage and cache under the binary's
+            // own name (the download's file name, or "Morphonic" once installed).
+            foreach (var name in new[] { "Morphonic", Path.GetFileName(Environment.ProcessPath ?? "") }.Where(n => n.Length > 0).Distinct())
+            {
+                foreach (var dir in new[] { Path.Combine(LinuxHost.DataHome, name), Path.Combine(LinuxHost.CacheHome, name) })
+                    try { if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true); } catch { }
+            }
             return new Result(true, "Removed Morphonic and all of its data.");
         }
         catch (Exception ex)

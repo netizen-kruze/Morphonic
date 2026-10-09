@@ -32,12 +32,12 @@ public static class BootLog
                 $"machine:        {machine}",
                 $"exe:            {Environment.ProcessPath}",
                 $"args:           {(args.Length == 0 ? "(none)" : string.Join(" ", args))}",
-                $"run before:     {(AppSettings.HasRunBefore() ? "yes" : "no")}",
-                $"data folder:    {AppPaths.DataDir} — {(entries < 0 ? "NOT listable" : entries + " entries visible")} at boot",
+                $"run before:     {(AppSettings.HasRunBefore() ? "yes" : "no")} (per-user marker, not per data folder)",
+                $"data folder:    {AppPaths.DataDir} — {(entries < 0 ? "NOT listable" : entries + " entries, the app's own included")}",
                 $"settings from:  {AppSettings.LastLoadSource}",
                 $"voice:          {(settings.VoiceId.Length == 0 ? "(none chosen)" : settings.VoiceId)} ({voices} voice file(s) in the library)",
-                $"microphone:     index {settings.InputDeviceIndex} '{settings.InputDeviceName}' ({inputs} input device(s) present)",
-                $"output:         index {settings.OutputDeviceIndex} '{settings.OutputDeviceName}' ({outputs} output device(s) present)",
+                $"microphone:     {Device(settings.InputDeviceIndex, settings.InputDeviceName)} ({inputs} input device(s) listed)",
+                $"output:         {Device(settings.OutputDeviceIndex, settings.OutputDeviceName)} ({outputs} output device(s) listed)",
                 $"pitch/block:    {settings.PitchSemitones:+0;-0;0} st, block {settings.BlockMs} ms, context {settings.ExtraMs} ms, crossfade {settings.CrossfadeMs} ms",
                 $"acceleration:   {acceleration}",
             };
@@ -45,6 +45,9 @@ public static class BootLog
         }
         catch { /* diagnostics must never affect startup */ }
     }
+
+    private static string Device(int index, string name) =>
+        index <= 0 || name.Length == 0 ? "system default" : $"index {index} '{name}'";
 
     public static void Append(string line)
     {

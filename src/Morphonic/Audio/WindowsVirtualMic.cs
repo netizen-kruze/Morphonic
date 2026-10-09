@@ -66,15 +66,47 @@ public static class WindowsVirtualMic
                Encoding.Unicode.GetString(bytes).Contains(signer, StringComparison.Ordinal);
     }
 
-    // The package Install would use: the first carried and signed one.
-    public static Package? Installable => Candidates.FirstOrDefault(p => Carried(p) && Signed(p));
+    // The package Install would use: the first carried and signed one. The
+    // embedded resources never change, so this is read once.
+    private static readonly Lazy<Package?> InstallableOnce = new(() => Candidates.FirstOrDefault(p => Carried(p) && Signed(p)));
+    public static Package? Installable => InstallableOnce.Value;
 
     // Any carried package (for the explanation when none is installable).
-    public static bool PackageAvailable => Candidates.Any(Carried);
+    private static readonly Lazy<bool> PackageAvailableOnce = new(() => Candidates.Any(Carried));
+    public static bool PackageAvailable => PackageAvailableOnce.Value;
     public static bool PackageSigned => Installable != null;
 
-    // The package whose device is present on this machine, if any.
-    public static Package? Present => Candidates.FirstOrDefault(p => DevicePresent(p.HardwareId));
+    // The package whose device is present on this machine, if any. Asked
+    // many times per devices payload (once per output device, too), and
+    // each answer is a SetupAPI enumeration: kept for a few seconds, and
+    // dropped as soon as Install or Remove changed anything.
+    private static readonly object PresentGate = new();
+    private static Package? _present;
+    private static long _presentAt = long.MinValue;
+    private const int PresentCacheMs = 3000;
+
+    public static Package? Present
+    {
+        get
+        {
+            lock (PresentGate)
+            {
+                long now = Environment.TickCount64;
+                if (_presentAt == long.MinValue || now - _presentAt > PresentCacheMs)
+                {
+                    _present = Candidates.FirstOrDefault(p => DevicePresent(p.HardwareId));
+                    _presentAt = now;
+                }
+                return _present;
+            }
+        }
+    }
+
+    public static void Invalidate()
+    {
+        lock (PresentGate) _presentAt = long.MinValue;
+    }
+
     public static bool Installed => Present != null;
 
     // The names the rest of the app routes by.
@@ -117,14 +149,18 @@ public static class WindowsVirtualMic
         string dir;
         try { dir = ExtractPackage(p); }
         catch (Exception ex) { return (false, "could not unpack the driver: " + ex.Message); }
-        return RunElevated(new[] { "--install-virtual-mic", dir, "--inf", p.Inf, "--hwid", p.HardwareId });
+        var result = RunElevated(new[] { "--install-virtual-mic", dir, "--inf", p.Inf, "--hwid", p.HardwareId });
+        Invalidate();
+        return result;
     }
 
     public static (bool Ok, string Message) Remove()
     {
         var p = Present;
         if (p == null) return (true, "no virtual microphone is installed");
-        return RunElevated(new[] { "--remove-virtual-mic", "--inf", p.Inf, "--hwid", p.HardwareId });
+        var result = RunElevated(new[] { "--remove-virtual-mic", "--inf", p.Inf, "--hwid", p.HardwareId });
+        Invalidate();
+        return result;
     }
 
     private static (bool Ok, string Message) RunElevated(string[] verbArgs)

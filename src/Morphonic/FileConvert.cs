@@ -15,7 +15,13 @@ public static class FileConvert
     public static int Run(string[] args)
     {
         int i = Array.IndexOf(args, "--convert");
-        if (i < 0 || i + 2 >= args.Length) { Console.WriteLine("usage: Morphonic --convert <in.wav> <out.wav> [--pitch <semitones>] [--data-dir <dir>]"); return 2; }
+        // Both file names must follow the switch; another switch in their
+        // place ("--convert --data-dir X") is a usage error, not a file.
+        if (i < 0 || i + 2 >= args.Length || args[i + 1].StartsWith("--", StringComparison.Ordinal) || args[i + 2].StartsWith("--", StringComparison.Ordinal))
+        {
+            Console.Error.WriteLine("usage: Morphonic --convert <in.wav> <out.wav> [--pitch <semitones>] [--data-dir <dir>]");
+            return 2;
+        }
         string inPath = args[i + 1], outPath = args[i + 2];
         int pitchArg = int.TryParse(Arg(args, "--pitch"), out var p) ? p : int.MinValue;
         try

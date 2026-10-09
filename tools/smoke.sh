@@ -18,7 +18,9 @@
 set -u
 EXE="${1:-$(dirname "$0")/../publish-linux/Morphonic}"
 MODELS="${2:-}"
-WAIT=12
+# Seconds the app runs. The full run (with models) needs the voice loaded and
+# converting for a while: a slow CPU takes ten seconds for the load alone.
+WAIT="${SMOKE_WAIT:-12}"
 
 if [ ! -f "$EXE" ]; then echo "binary not found: $EXE"; exit 2; fi
 if [ ! -x "$EXE" ]; then echo "not executable: $EXE  (fix: chmod +x \"$EXE\")"; exit 2; fi
@@ -40,6 +42,7 @@ if [ -n "$MODELS" ]; then
   if [ -f "$MODELS/sample-voice-40k.onnx" ]; then cp "$MODELS/sample-voice-40k.onnx" "$DATA/voices/"; else cp "$MODELS/../voices/sample-voice-40k.onnx" "$DATA/voices/"; fi
   echo '{ "VoiceId": "sample-voice-40k.onnx", "Acceleration": "cpu", "PitchSemitones": 3, "VirtualMic": false }' > "$DATA/settings.json"
   FULL=1
+  [ -n "${SMOKE_WAIT:-}" ] || WAIT=40
 else
   echo '{ "PitchSemitones": 3, "VirtualMic": false }' > "$DATA/settings.json"
 fi
@@ -77,7 +80,8 @@ check "no core dumps"                     "$([ "$CRASHES" = 0 ] && echo 1 || ech
 check "no unhandled exceptions logged"    "$(printf '%s' "$ERR" | grep -q -E 'Unhandled|SessionWork|UiDispatcher|OnUiMessage|StartSession' && echo 0 || echo 1)"
 if [ "$FULL" = 1 ]; then
   check "voice started on the default devices" "$(has 'voice started:')"
-  check "session summary written"              "$(has 'voice session ended .* passes')"
+  check "session summary written"              "$(has 'voice session ended \(exiting\)')"
+  check "the voice converted audio (passes > 0)" "$(has 'voice session ended .* [1-9][0-9]* passes')"
 fi
 
 echo

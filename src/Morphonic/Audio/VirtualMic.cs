@@ -45,7 +45,21 @@ public static class VirtualMic
         error = "";
         if (OperatingSystem.IsWindows()) { if (WindowsVirtualMic.Installed) return true; error = "the Morphonic virtual microphone driver is not installed (Settings → Virtual microphone)"; return false; }
         if (!Supported) { error = "virtual microphones are a Linux feature here"; return false; }
-        if (Exists()) { Status = "present"; return true; }
+        if (Exists())
+        {
+            // Already there. Left behind by a run of this data folder that
+            // did not exit cleanly, it is adopted so Remove still takes it
+            // down at exit; made by another running Morphonic (another data
+            // folder) or by hand, it is used and left alone.
+            Modules.Clear();
+            var found = FindModules(LinuxHost.Capture("pactl", new[] { "list", "short", "modules" }));
+            var record = ReadRecord();
+            Modules.AddRange(ModulesToAdopt(found, record, ProcessAlive));
+            Status = Modules.Count > 0
+                ? "present (adopted modules " + string.Join(", ", Modules) + " of a run that did not exit cleanly)"
+                : "present (made by another program or Morphonic; left alone)";
+            return true;
+        }
         var sink = LinuxHost.Capture("pactl", new[]
         {
             "load-module", "module-null-sink", "sink_name=" + SinkName,
@@ -65,16 +79,90 @@ public static class VirtualMic
         }).Trim();
         if (int.TryParse(source, out var sourceModule)) Modules.Add(sourceModule);
         else ErrorLog.WriteNote("VirtualMic", "the remapped source was not created (" + source + "); programs can still pick 'Monitor of " + SinkDescription + "'");
+        WriteRecord();
         Status = "created (modules " + string.Join(", ", Modules) + ")";
         return true;
     }
 
+    // Whether this process holds modules Remove would unload.
+    public static bool Owned => Modules.Count > 0;
+
     public static void Remove()
     {
         if (!OperatingSystem.IsLinux()) return;   // the Windows driver is persistent
-        foreach (var m in Modules)
-            LinuxHost.Capture("pactl", new[] { "unload-module", m.ToString() });
+        // Newest first: the remapped source goes before the sink it reads.
+        for (int i = Modules.Count - 1; i >= 0; i--)
+            LinuxHost.Capture("pactl", new[] { "unload-module", Modules[i].ToString() });
         Modules.Clear();
+        try { File.Delete(RecordPath); } catch { }
         Status = "removed";
+    }
+
+    // ── ownership record ───────────────────────────────────────────
+    // <data dir>/virtualmic.json: the pid that loaded the modules and their
+    // ids, written at creation and deleted at a clean exit. Its presence
+    // after a start means that run never got to Remove.
+
+    public sealed record Record(int Pid, int[] Modules);
+
+    private static string RecordPath => Path.Combine(AppPaths.DataDir, "virtualmic.json");
+
+    private static void WriteRecord()
+    {
+        try
+        {
+            Directory.CreateDirectory(AppPaths.DataDir);
+            File.WriteAllText(RecordPath, System.Text.Json.JsonSerializer.Serialize(new Record(Environment.ProcessId, Modules.ToArray())));
+        }
+        catch (Exception ex) { ErrorLog.WriteEntry("VirtualMic.Record", ex); }
+    }
+
+    private static Record? ReadRecord()
+    {
+        try
+        {
+            if (!File.Exists(RecordPath)) return null;
+            return System.Text.Json.JsonSerializer.Deserialize<Record>(File.ReadAllText(RecordPath));
+        }
+        catch { return null; }
+    }
+
+    private static bool ProcessAlive(int pid)
+    {
+        if (pid <= 0) return false;
+        if (pid == Environment.ProcessId) return true;
+        try { using var p = System.Diagnostics.Process.GetProcessById(pid); return !p.HasExited; }
+        catch { return false; }
+    }
+
+    // Pure: of the modules now carrying our names (`found`), those a dead
+    // run of this data folder recorded as its own. Nothing is adopted
+    // without a record, or while the recording process still runs.
+    internal static List<int> ModulesToAdopt(IReadOnlyList<int> found, Record? record, Func<int, bool> alive)
+    {
+        var adopt = new List<int>();
+        if (record == null || record.Modules == null || alive(record.Pid)) return adopt;
+        foreach (var id in found)
+            if (Array.IndexOf(record.Modules, id) >= 0) adopt.Add(id);
+        return adopt;
+    }
+
+    // The ids of our modules in "pactl list short modules" output
+    // ("<id>\t<module>\t<arguments>"): the null sink named SinkName and
+    // the remapped source named SourceName, sink first.
+    internal static List<int> FindModules(string pactlShortModules)
+    {
+        var sinks = new List<int>();
+        var sources = new List<int>();
+        foreach (var raw in (pactlShortModules ?? "").Split('\n'))
+        {
+            var parts = raw.Trim('\r').Split('\t');
+            if (parts.Length < 3 || !int.TryParse(parts[0].Trim(), out var id)) continue;
+            var args = " " + parts[2] + " ";
+            if (parts[1] == "module-null-sink" && args.Contains(" sink_name=" + SinkName + " ", StringComparison.Ordinal)) sinks.Add(id);
+            else if (parts[1] == "module-remap-source" && args.Contains(" source_name=" + SourceName + " ", StringComparison.Ordinal)) sources.Add(id);
+        }
+        sinks.AddRange(sources);
+        return sinks;
     }
 }
