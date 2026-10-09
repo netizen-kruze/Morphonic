@@ -258,6 +258,24 @@ included model files on `--fetch-models` with no network (all three
 verified against the pinned hashes) and starts with them. Nothing in
 `error.log` in any run.
 
+## "VRCNext goes black when Morphonic opens" — the test driver, not the app
+
+Reported on the development PC, where VRCNext (another Photino app) runs
+all day. Reproduced the other way round first: with VRCNext up, Morphonic
+was started the plain way from `C:\tools` and VRCNext's window was
+screenshotted and its six WebView2 processes listed before and after —
+same brightness, same process ids, nothing in its log. The cause was
+`tools/ui_walkthrough.py`: its clean-up step killed every WebView2
+process whose command line contained "Photino", meant to catch
+Morphonic's own lingering browser, and VRCNext's browser, GPU, renderer
+and utility processes all carry that word too — so every driven test run
+today pulled the browser out from under VRCNext, which is exactly a black
+window. The driver now matches only `--webview-exe-name=Morphonic.exe`
+and the profile folder under the test's own data folder. Morphonic itself
+kills no processes and shares nothing with other apps (own WebView2
+profile folder, own single-instance mutex, no environment or registry
+overrides).
+
 ## Support report
 
 For a tester on another machine: **Settings → About → Save a report…**

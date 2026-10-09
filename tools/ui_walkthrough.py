@@ -54,13 +54,22 @@ class App:
         self.page = None
 
     # WebView2 keeps its browser process a moment after a hard kill; a
-    # new window cannot share its profile until it is gone.
+    # new window cannot share its profile until it is gone. Only
+    # Morphonic's own browser processes are touched: WebView2 tags them
+    # with "--webview-exe-name=Morphonic.exe" (the browser process) and the
+    # profile folder under the test's data folder (its children). Every
+    # other Photino app on the machine (VRCNext, Chatterbox…) also says
+    # "Photino" on its command line, so that word must never be the filter.
     @staticmethod
-    def kill_all():
+    def kill_all(data=None):
+        marks = ["--webview-exe-name=Morphonic.exe"]
+        if data:
+            marks.append(os.path.join(os.path.abspath(data), "webview"))
+        cond = " -or ".join("$_.CommandLine.Contains('%s')" % m.replace("'", "''") for m in marks)
         subprocess.run(["powershell", "-NoProfile", "-Command",
                         "Stop-Process -Name Morphonic -Force -ErrorAction SilentlyContinue; "
                         "Get-CimInstance Win32_Process -Filter \"name='msedgewebview2.exe'\" | "
-                        "Where-Object { $_.CommandLine -ne $null -and ($_.CommandLine.Contains('Photino') -or $_.CommandLine.Contains('morphonic')) } | "
+                        "Where-Object { $_.CommandLine -ne $null -and (" + cond + ") } | "
                         "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"],
                        capture_output=True)
         time.sleep(1.5)
@@ -129,7 +138,7 @@ class App:
         if self.page:
             self.page.close()
             self.page = None
-        self.kill_all()
+        self.kill_all(self.data)
         self.proc = None
 
     def alive(self):
