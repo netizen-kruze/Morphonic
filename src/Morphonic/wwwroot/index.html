@@ -149,7 +149,7 @@
           <span class="seg" id="segBlock"><button data-v="160">160 ms</button><button data-v="250">250 ms</button><button data-v="350">350 ms</button><button data-v="500">500 ms</button></span></div>
         <div class="setrow"><span class="grow"><span class="name">Context</span><div class="desc">Speech before each block the encoder also sees. More context is more natural and costs CPU time per pass.</div></span>
           <span class="seg" id="segExtra"><button data-v="1000">1 s</button><button data-v="1500">1.5 s</button><button data-v="2500">2.5 s</button></span></div>
-        <div class="setrow"><span class="grow"><span class="name">Crossfade</span><div class="desc">Overlap between consecutive blocks. Longer hides seams better and adds a little delay.</div></span>
+        <div class="setrow"><span class="grow"><span class="name">Crossfade</span><div class="desc">Overlap between consecutive blocks. Longer hides seams better and adds a little delay; the alignment itself uses at most 40 ms (the RVC recipe), longer settings only widen the window.</div></span>
           <span class="seg" id="segCross"><button data-v="30">30 ms</button><button data-v="50">50 ms</button><button data-v="80">80 ms</button><button data-v="120">120 ms</button></span></div>
         <div class="setrow"><span class="grow"><span class="name">Noise gate</span><div class="desc">Frames quieter than this are silenced before conversion, so room noise never becomes a voice.</div></span>
           <span class="seg" id="segGate"><button data-v="-60">Off</button><button data-v="-50">-50 dB</button><button data-v="-40">-40 dB</button><button data-v="-30">-30 dB</button></span></div>

@@ -283,6 +283,10 @@ PyTorch — that is Python's own download, outside Morphonic.
 - **The window is blank** (Linux): `last_boot.log` says whether the page
   connected; on the proprietary NVIDIA driver Morphonic already switches
   WebKitGTK to its GL path.
+- **Which audio tools ran** (Linux): the `voice started:` line in
+  `last_boot.log` names them — `pw-record` / `pw-play` on PipeWire (on
+  PipeWire 1.0, as in Ubuntu 24.04, without the `--raw` flag newer versions
+  take), or `parec` / `pacat` on a PulseAudio-only desktop.
 - **Morphonic crashed or vanished**: the next start notices (a
   `boot.inprogress` marker survived), copies the OS crash record into
   `error.log`, and does a safe boot.
@@ -333,7 +337,9 @@ The tests check the signal processing against values produced by the
 original Python recipe (torch.stft, librosa's mel, RVC's RMVPE decode) for
 the bundled clip; with `MORPHONIC_TEST_MODELS` pointing at a folder holding the
 components and the sample voice they also run the ONNX stages against the
-reference.
+reference. The checkpoint reader's fixture (`Fixtures/tiny_voice.pth`, a
+few KB in torch.save's layout) is written by `tools/make_test_fixture.py`
+with numpy alone.
 
 ### Offline builds
 

@@ -45,7 +45,15 @@ public static class VirtualMic
         error = "";
         if (OperatingSystem.IsWindows()) { if (WindowsVirtualMic.Installed) return true; error = "the Morphonic virtual microphone driver is not installed (Settings → Virtual microphone)"; return false; }
         if (!Supported) { error = "virtual microphones are a Linux feature here"; return false; }
-        if (Exists()) { Status = "present"; return true; }
+        if (Exists())
+        {
+            // Left behind by a run that did not exit cleanly: its modules
+            // are adopted, so Remove still takes them down at exit.
+            Modules.Clear();
+            Modules.AddRange(FindModules(LinuxHost.Capture("pactl", new[] { "list", "short", "modules" })));
+            Status = Modules.Count > 0 ? "present (adopted modules " + string.Join(", ", Modules) + ")" : "present (modules unknown)";
+            return true;
+        }
         var sink = LinuxHost.Capture("pactl", new[]
         {
             "load-module", "module-null-sink", "sink_name=" + SinkName,
@@ -72,9 +80,29 @@ public static class VirtualMic
     public static void Remove()
     {
         if (!OperatingSystem.IsLinux()) return;   // the Windows driver is persistent
-        foreach (var m in Modules)
-            LinuxHost.Capture("pactl", new[] { "unload-module", m.ToString() });
+        // Newest first: the remapped source goes before the sink it reads.
+        for (int i = Modules.Count - 1; i >= 0; i--)
+            LinuxHost.Capture("pactl", new[] { "unload-module", Modules[i].ToString() });
         Modules.Clear();
         Status = "removed";
+    }
+
+    // The ids of our modules in "pactl list short modules" output
+    // ("<id>\t<module>\t<arguments>"): the null sink named SinkName and
+    // the remapped source named SourceName, sink first.
+    internal static List<int> FindModules(string pactlShortModules)
+    {
+        var sinks = new List<int>();
+        var sources = new List<int>();
+        foreach (var raw in (pactlShortModules ?? "").Split('\n'))
+        {
+            var parts = raw.Trim('\r').Split('\t');
+            if (parts.Length < 3 || !int.TryParse(parts[0].Trim(), out var id)) continue;
+            var args = " " + parts[2] + " ";
+            if (parts[1] == "module-null-sink" && args.Contains(" sink_name=" + SinkName + " ", StringComparison.Ordinal)) sinks.Add(id);
+            else if (parts[1] == "module-remap-source" && args.Contains(" source_name=" + SourceName + " ", StringComparison.Ordinal)) sources.Add(id);
+        }
+        sinks.AddRange(sources);
+        return sinks;
     }
 }

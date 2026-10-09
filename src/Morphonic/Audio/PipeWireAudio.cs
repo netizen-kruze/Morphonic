@@ -18,12 +18,21 @@ internal static class PipeWireAudio
 {
     public sealed record Command(string Label, string File, string[] Args);
 
+    // pw-record / pw-play: "--raw" (raw samples on the pipe) exists from
+    // PipeWire 1.2; 1.0 (Ubuntu 24.04 LTS, Debian 12 backports) rejects the
+    // option and exits at once — there a pipe is raw anyway, so the same
+    // tool is tried again without it before falling back to PulseAudio's.
     public static IEnumerable<Command> CaptureCommands(string? target)
     {
-        var pw = new List<string> { "--rate=16000", "--channels=1", "--format=s16", "--raw", "--latency=20ms" };
-        if (target != null) pw.Add("--target=" + target);
-        pw.Add("-");
-        yield return new Command("pw-record", "pw-record", pw.ToArray());
+        foreach (var raw in new[] { true, false })
+        {
+            var pw = new List<string> { "--rate=16000", "--channels=1", "--format=s16" };
+            if (raw) pw.Add("--raw");
+            pw.Add("--latency=20ms");
+            if (target != null) pw.Add("--target=" + target);
+            pw.Add("-");
+            yield return new Command("pw-record", "pw-record", pw.ToArray());
+        }
 
         var pa = new List<string> { "--rate=16000", "--channels=1", "--format=s16le", "--raw", "--latency-msec=20" };
         if (target != null) pa.Add("--device=" + target);
@@ -34,10 +43,15 @@ internal static class PipeWireAudio
 
     public static IEnumerable<Command> PlaybackCommands(string? target, int rate)
     {
-        var pw = new List<string> { $"--rate={rate}", "--channels=1", "--format=s16", "--raw", "--latency=20ms" };
-        if (target != null) pw.Add("--target=" + target);
-        pw.Add("-");
-        yield return new Command("pw-play", "pw-play", pw.ToArray());
+        foreach (var raw in new[] { true, false })
+        {
+            var pw = new List<string> { $"--rate={rate}", "--channels=1", "--format=s16" };
+            if (raw) pw.Add("--raw");
+            pw.Add("--latency=20ms");
+            if (target != null) pw.Add("--target=" + target);
+            pw.Add("-");
+            yield return new Command("pw-play", "pw-play", pw.ToArray());
+        }
 
         var pa = new List<string> { $"--rate={rate}", "--channels=1", "--format=s16le", "--raw", "--latency-msec=20" };
         if (target != null) pa.Add("--device=" + target);

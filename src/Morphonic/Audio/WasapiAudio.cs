@@ -201,6 +201,7 @@ internal sealed class WasapiOutput : IAudioOutput
         private readonly Resampler? _resampler;
         private readonly int _channels;
         private readonly float[] _src;
+        private readonly float[] _resampled;
         private float[] _queue = new float[8192];
         private int _queued;
 
@@ -213,8 +214,10 @@ internal sealed class WasapiOutput : IAudioOutput
             _channels = format.Channels;
             _resampler = sourceRate == format.SampleRate ? null : new Resampler(sourceRate, format.SampleRate);
             _src = new float[Math.Max(256, sourceRate / 100)]; // 10 ms of source per pull
+            _resampled = new float[_resampler?.MaxOutput(_src.Length) ?? 0];
         }
 
+        // On the device's thread every few milliseconds: no allocation here.
         public int Read(byte[] buffer, int offset, int count)
         {
             int frames = count / (4 * _channels);
@@ -224,17 +227,14 @@ internal sealed class WasapiOutput : IAudioOutput
                 if (_resampler == null) Enqueue(_src, _src.Length);
                 else
                 {
-                    var tmp = new float[_resampler.MaxOutput(_src.Length)];
-                    int n = _resampler.Process(_src, tmp);
-                    Enqueue(tmp, n);
+                    int n = _resampler.Process(_src, _resampled);
+                    Enqueue(_resampled, n);
                 }
             }
+            var dst = buffer.AsSpan(offset);
             for (int f = 0; f < frames; f++)
-            {
-                var bytes = BitConverter.GetBytes(_queue[f]);
                 for (int c = 0; c < _channels; c++)
-                    Buffer.BlockCopy(bytes, 0, buffer, offset + (f * _channels + c) * 4, 4);
-            }
+                    BitConverter.TryWriteBytes(dst.Slice((f * _channels + c) * 4, 4), _queue[f]);
             Array.Copy(_queue, frames, _queue, 0, _queued - frames);
             _queued -= frames;
             return frames * 4 * _channels;

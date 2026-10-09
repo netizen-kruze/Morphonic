@@ -29,6 +29,12 @@ public sealed class VoiceController : IDisposable
     private IAudioInput? _input;
     private IAudioOutput? _output, _monitor;
     private RingBuffer? _monitorRing;
+    // The sidetone device runs on its own clock: whatever it falls behind
+    // by piles up in the ring. Past MonitorMaxMs the backlog is cut to
+    // MonitorCushionMs, so the sidetone never lags more than that.
+    private const int MonitorMaxMs = 300, MonitorCushionMs = 60;
+    private int _monitorMax, _monitorCushion;
+    private long _monitorCatchUps;
     private string _sessionLabel = "";
     private volatile bool _loading;
     private string _loadingLabel = "";
@@ -109,8 +115,10 @@ public sealed class VoiceController : IDisposable
             case "ping":
                 break;
 
+            // The machine profile runs lspci / nvidia-smi on Linux (seconds
+            // on a slow box): never on the window thread.
             case "getDocs":
-                _send("docs", new
+                RunOffUiThread(() => _send("docs", new
                 {
                     version = Version,
                     readme = ReadEmbeddedDoc("docs/README.md"),
@@ -120,7 +128,7 @@ public sealed class VoiceController : IDisposable
                     installedAt = LinuxInstaller.InstalledAt(),
                     dataDir = AppPaths.DataDir,
                     platform = OperatingSystem.IsWindows() ? "windows" : "linux",
-                });
+                }));
                 break;
 
             case "start":
@@ -144,33 +152,53 @@ public sealed class VoiceController : IDisposable
                 RunOffUiThread(() => { lock (_sessionLock) Stop("stopped"); });
                 break;
 
+            // Remembering a device re-reads the device list, which on Linux
+            // runs pw-dump (seconds while PipeWire restarts): off the
+            // window thread, like every other device listing.
             case "setInputDevice":
-                lock (_settingsLock) { SetInput(msg["index"]?.Value<int?>() ?? 0); _settings.Save(); }
-                SendSavedToast();
-                RestartIfRunning();
+                {
+                    int index = msg["index"]?.Value<int?>() ?? 0;
+                    RunOffUiThread(() =>
+                    {
+                        lock (_settingsLock) { SetInput(index); _settings.Save(); }
+                        SendSavedToast();
+                        RestartIfRunning();
+                    });
+                }
                 break;
 
             case "setOutputDevice":
-                lock (_settingsLock) { SetOutput(msg["index"]?.Value<int?>() ?? 0); _settings.Save(); }
-                SendSavedToast();
-                RestartIfRunning();
+                {
+                    int index = msg["index"]?.Value<int?>() ?? 0;
+                    RunOffUiThread(() =>
+                    {
+                        lock (_settingsLock) { SetOutput(index); _settings.Save(); }
+                        SendSavedToast();
+                        RestartIfRunning();
+                    });
+                }
                 break;
 
             // Hear yourself (sidetone): "auto", "off", or an output index.
             case "setSidetone":
             case "setMonitorDevice":
-                lock (_settingsLock)
                 {
                     var mode = msg["mode"]?.ToString() ?? "";
                     int idx = mode == "auto" || mode == "off" ? -1 : msg["index"]?.Value<int?>() ?? -1;
-                    _settings.MonitorDeviceIndex = idx;
-                    _settings.MonitorDeviceName = idx < 0 ? "" : AudioDevices.NameAt(AudioDevices.Outputs(), idx);
-                    _settings.SidetoneAuto = mode == "auto" || (mode.Length == 0 && idx < 0 && _settings.SidetoneAuto);
-                    _settings.Save();
+                    RunOffUiThread(() =>
+                    {
+                        lock (_settingsLock)
+                        {
+                            _settings.MonitorDeviceIndex = idx;
+                            _settings.MonitorDeviceName = idx < 0 ? "" : AudioDevices.NameAt(AudioDevices.Outputs(), idx);
+                            _settings.SidetoneAuto = mode == "auto" || (mode.Length == 0 && idx < 0 && _settings.SidetoneAuto);
+                            _settings.Save();
+                        }
+                        SendSavedToast();
+                        SendDevices();
+                        RestartIfRunning();
+                    });
                 }
-                SendSavedToast();
-                SendDevices();
-                RestartIfRunning();
                 break;
 
             case "setVoice":
@@ -204,13 +232,14 @@ public sealed class VoiceController : IDisposable
                     if (picked == null || picked.Length == 0) break;
                     RunOffUiThread(() =>
                     {
+                        string? arrived = null;
                         foreach (var file in picked)
                         {
-                            var (ok, message) = VoiceLibrary.Import(file);
-                            _send("toast", new { ok, msg = message });
+                            var (ok, message) = VoiceLibrary.Import(file, out var added);
+                            if (ok && added != null) arrived = added;
+                            else _send("toast", new { ok, msg = message });
                         }
-                        SendVoices();
-                        ConvertNextPending();
+                        Arrived(arrived);
                     });
                 }
                 break;
@@ -268,10 +297,14 @@ public sealed class VoiceController : IDisposable
                     var name = Path.GetFileName(msg["name"]?.ToString() ?? "");
                     RunOffUiThread(() =>
                     {
-                        var (ok, message) = VoiceLibrary.EndImport(name);
-                        _send("toast", new { ok, msg = message });
-                        SendVoices();
-                        ConvertNextPending();
+                        var (ok, message) = VoiceLibrary.EndImport(name, out var added);
+                        if (ok && added != null) Arrived(added);
+                        else
+                        {
+                            _send("toast", new { ok, msg = message });
+                            SendVoices();
+                            ConvertNextPending();
+                        }
                     });
                 }
                 break;
@@ -300,6 +333,7 @@ public sealed class VoiceController : IDisposable
                         var (ok, message) = install ? WindowsVirtualMic.Install() : WindowsVirtualMic.Remove();
                         _virtualMicBusy = false;
                         if (ok && install) lock (_settingsLock) { _settings.VirtualMic = true; _settings.Save(); }
+                        WindowsVirtualMic.Invalidate();
                         AudioDevices.Invalidate();
                         BootLog.Append($"virtual microphone {(install ? "install" : "remove")} {(ok ? "ok" : "failed")}: {message}");
                         _send("toast", new { ok, msg = (install ? "Virtual microphone: " : "Virtual microphone removed: ") + message });
@@ -413,50 +447,61 @@ public sealed class VoiceController : IDisposable
                         Adopt(readyId, "is already in your library");
                         break;
                     }
-                    _hubCts = new CancellationTokenSource();
-                    var ct = _hubCts.Token;
+                    var cts = new CancellationTokenSource();
+                    _hubCts = cts;
+                    var ct = cts.Token;
                     _send("voiceProgress", new { name, received = 0L, total = size, done = false });
                     _ = Task.Run(async () =>
                     {
                         var (ok, message, added) = await VoiceHub.DownloadAsync(repo, path, size, string.IsNullOrEmpty(sha) ? null : sha,
                             (got, total) => SendVoiceProgress(name, got, total), ct);
-                        _hubCts?.Dispose();
-                        _hubCts = null;
+                        Interlocked.CompareExchange(ref _hubCts, null, cts);
+                        cts.Dispose();
                         _send("voiceProgress", new { name, received = size, total = size, done = true, ok });
                         BootLog.Append($"voice download {(ok ? "ok" : "failed")}: {repo}/{path} — {message}");
                         if (!ok) { _send("toast", new { ok = false, msg = message }); SendVoices(); return; }
-                        if (added.EndsWith(".onnx", StringComparison.OrdinalIgnoreCase)) { Adopt(added, "is in your library"); return; }
-                        // A checkpoint: converted next, adopted when ready.
-                        _wanted = added;
-                        _highlight = added;
-                        _send("toast", new { ok = true, msg = message });
-                        SendVoices();
-                        ConvertNextPending();
+                        // `added` is the voice file itself — for a zip, the
+                        // checkpoint or export it held, never the zip's name.
+                        Arrived(added, message);
                     });
                 }
                 break;
 
+            // The page's Cancel during a Hub download; the source may have
+            // just been disposed by the finishing download.
             case "cancelVoiceDownload":
-                _hubCts?.Cancel();
+                {
+                    var cts = _hubCts;
+                    try { cts?.Cancel(); } catch (ObjectDisposedException) { }
+                }
                 break;
 
+            // The loaded converter is shared with a session that may be
+            // starting right now: its disposal happens under the session
+            // lock, where "running" and "loading" are both settled.
             case "deleteVoice":
                 {
                     var id = Path.GetFileName(msg["id"]?.ToString() ?? "");
-                    if (IsRunning && id == _settings.VoiceId)
+                    RunOffUiThread(() =>
                     {
-                        _send("toast", new { ok = false, msg = "Stop the voice before deleting it" });
-                        break;
-                    }
-                    if (id == _converterKeyVoice) DisposeConverter();
-                    if (VoiceLibrary.Delete(id))
-                    {
-                        if (id == _settings.VoiceId) lock (_settingsLock) { _settings.VoiceId = ""; _settings.Save(); }
-                        _send("toast", new { ok = true, msg = id + " removed" });
-                    }
-                    SendVoices();
-                    SendDevices();
-                    SendState();
+                        lock (_sessionLock)
+                        {
+                            if ((IsRunning || _loading) && id == _settings.VoiceId)
+                            {
+                                _send("toast", new { ok = false, msg = "Stop the voice before deleting it" });
+                                return;
+                            }
+                            if (id == _converterKeyVoice) DisposeConverter();
+                        }
+                        if (VoiceLibrary.Delete(id))
+                        {
+                            if (id == _settings.VoiceId) lock (_settingsLock) { _settings.VoiceId = ""; _settings.Save(); }
+                            _send("toast", new { ok = true, msg = id + " removed" });
+                        }
+                        SendVoices();
+                        SendDevices();
+                        SendState();
+                    });
                 }
                 break;
 
@@ -545,24 +590,30 @@ public sealed class VoiceController : IDisposable
             case "deleteModel":
                 {
                     var id = msg["id"]?.ToString() ?? "";
-                    if (IsRunning) { _send("toast", new { ok = false, msg = "Stop the voice before deleting components" }); break; }
-                    if (id == GpuPack.Id)
+                    RunOffUiThread(() =>
                     {
-                        GpuPack.Delete();
-                        _send("toast", new { ok = true, msg = "GPU acceleration removed — takes effect after restarting Morphonic" });
-                    }
-                    else
-                    {
-                        DisposeConverter();
-                        _models.Delete(id);
-                        var m = ModelCatalog.Find(id);
-                        if (m?.Kind == ModelKind.Voice && _settings.VoiceId == m.File.FileName)
-                            lock (_settingsLock) { _settings.VoiceId = ""; _settings.Save(); }
-                    }
-                    SendModels();
-                    SendVoices();
-                    SendDevices();   // carries componentsReady: the page's first-run switch
-                    SendState();
+                        lock (_sessionLock)
+                        {
+                            if (IsRunning || _loading) { _send("toast", new { ok = false, msg = "Stop the voice before deleting components" }); return; }
+                            if (id == GpuPack.Id)
+                            {
+                                GpuPack.Delete();
+                                _send("toast", new { ok = true, msg = "GPU acceleration removed — takes effect after restarting Morphonic" });
+                            }
+                            else
+                            {
+                                DisposeConverter();
+                                _models.Delete(id);
+                                var m = ModelCatalog.Find(id);
+                                if (m?.Kind == ModelKind.Voice && _settings.VoiceId == m.File.FileName)
+                                    lock (_settingsLock) { _settings.VoiceId = ""; _settings.Save(); }
+                            }
+                        }
+                        SendModels();
+                        SendVoices();
+                        SendDevices();   // carries componentsReady: the page's first-run switch
+                        SendState();
+                    });
                 }
                 break;
 
@@ -639,7 +690,8 @@ public sealed class VoiceController : IDisposable
         {
             Stop("replaced");
             string? problem = null;
-            if (!ModelManager.ComponentsReady()) problem = "The content encoder and pitch model must be downloaded first — see Models";
+            if (Volatile.Read(ref _benchRunning) != 0) problem = "Wait for the speed check to finish";
+            else if (!ModelManager.ComponentsReady()) problem = "The content encoder and pitch model must be downloaded first — see Models";
             else if (_settings.VoiceId.Length == 0) problem = "Choose a voice first — see Voices";
             else if (!VoiceLibrary.Exists(_settings.VoiceId)) problem = $"The voice {_settings.VoiceId} is no longer in the library";
             if (problem != null)
@@ -721,6 +773,14 @@ public sealed class VoiceController : IDisposable
         _converterKey = "";
     }
 
+    private void AbandonConverter()
+    {
+        ErrorLog.WriteNote("Session", "the conversion worker did not stop within 5 s; its runtime sessions were abandoned rather than disposed under it");
+        BootLog.Append("conversion worker stuck in a pass — runtime sessions abandoned; the next start loads fresh ones");
+        _converter = null;
+        _converterKey = "";
+    }
+
     private void StartSession()
     {
         var converter = LoadConverter();
@@ -772,7 +832,13 @@ public sealed class VoiceController : IDisposable
         {
             monitor = AudioDevices.OpenOutput(null);
         }
-        if (monitor != null) _monitorRing = new RingBuffer(engine.SampleRate * 2);
+        if (monitor != null)
+        {
+            _monitorRing = new RingBuffer(engine.SampleRate * 2);
+            _monitorMax = engine.SampleRate * MonitorMaxMs / 1000;
+            _monitorCushion = engine.SampleRate * MonitorCushionMs / 1000;
+            _monitorCatchUps = 0;
+        }
         input.OnFailed += ex => SessionFailed(mine, "microphone capture failed — " + ex.Message, ex);
         output.OnFailed += ex => SessionFailed(mine, "playback failed — " + ex.Message, ex);
         if (monitor != null) monitor.OnFailed += ex => SessionFailed(mine, "monitor playback failed — " + ex.Message, ex);
@@ -818,9 +884,21 @@ public sealed class VoiceController : IDisposable
     {
         var ring = _monitorRing;
         if (ring == null) { Array.Clear(buf); return 0; }
+        if (TrimBacklog(ring, _monitorMax, _monitorCushion)) _monitorCatchUps++;
         int n = ring.Read(buf);
         if (n < buf.Length) Array.Clear(buf, n, buf.Length - n);
         return n;
+    }
+
+    // A reader on a slower clock than the writer: once the backlog passes
+    // `max` samples, the oldest are dropped so `cushion` remain. Returns
+    // whether anything was dropped.
+    internal static bool TrimBacklog(RingBuffer ring, int max, int cushion)
+    {
+        int backlog = ring.Count;
+        if (max <= 0 || backlog <= max) return false;
+        ring.Skip(backlog - Math.Max(0, Math.Min(cushion, max)));
+        return true;
     }
 
     // Device unplugged, driver failure, a pass that threw: wind the
@@ -847,12 +925,18 @@ public sealed class VoiceController : IDisposable
             if (_engine == null && _input == null && _output == null) return;
             if (_engine != null)
                 BootLog.Append($"voice session ended ({why}) after {(Environment.TickCount64 - _sessionStartedAt) / 60000.0:0.0} min — " +
-                               $"{_pace.Summary()}, {_engine.Underruns} underrun(s), {_engine.SkippedSamples / 16} ms skipped, playback cushion {_engine.PrimeHoldMs} ms; {MemoryLine()}");
+                               $"{_pace.Summary()}, {_engine.Underruns} underrun(s), {_engine.SkippedSamples / 16} ms skipped, playback cushion {_engine.PrimeHoldMs} ms" +
+                               (_monitor != null ? $", sidetone catch-ups {_monitorCatchUps}" : "") + $"; {MemoryLine()}");
             try { _input?.Dispose(); } catch { }
-            try { _engine?.Stop(); } catch { }
+            bool workerDone = true;
+            try { workerDone = _engine?.Stop() ?? true; } catch { }
             try { _output?.Dispose(); } catch { }
             try { _monitor?.Dispose(); } catch { }
             try { _engine?.Dispose(); } catch { }
+            // The worker never came back from its pass (a hung inference
+            // runtime): the sessions it is still inside are dropped, not
+            // disposed. The next start loads fresh ones.
+            if (!workerDone) AbandonConverter();
             _input = null;
             _output = null;
             _monitor = null;
@@ -1086,6 +1170,20 @@ public sealed class VoiceController : IDisposable
         if (next != null) StartConvert(next.Id, auto: true);
     }
 
+    // A voice just landed in the library by any route (drop, dialog, Hub):
+    // an export is adopted at once; a checkpoint is marked wanted, so the
+    // conversion that follows adopts it when ready. Null = nothing landed.
+    private void Arrived(string? id, string? note = null)
+    {
+        if (id == null) { SendVoices(); ConvertNextPending(); return; }
+        if (id.EndsWith(".onnx", StringComparison.OrdinalIgnoreCase)) { Adopt(id, "is in your library"); return; }
+        _wanted = id;
+        _highlight = id;
+        _send("toast", new { ok = true, msg = note ?? $"{Path.GetFileName(id)} added — converting to an ONNX voice now" });
+        SendVoices();
+        ConvertNextPending();
+    }
+
     private void FinishDownload()
     {
         _downloadingId = null;
@@ -1122,7 +1220,14 @@ public sealed class VoiceController : IDisposable
                 var voicePath = VoiceLibrary.PathFor(_settings.VoiceId);
                 var config = new EngineConfig { BlockMs = _settings.BlockMs, ExtraMs = _settings.ExtraMs, CrossfadeMs = _settings.CrossfadeMs };
                 var label = $"{VoiceName()} on {OnnxHost.Label}";
-                DisposeConverter();   // the bench loads its own copy; memory for two is not worth it
+                // The bench loads its own copy; memory for two is not worth
+                // it. A session that got in first keeps its converter and
+                // the bench steps aside (Start refuses while the bench runs).
+                lock (_sessionLock)
+                {
+                    if (IsRunning || _loading) { _send("bench", new { running = false, error = "the voice is running — stop it and run the speed check again" }); return; }
+                    DisposeConverter();
+                }
                 var report = await Benchmark.RunAsync(new[] { (label, (Func<VoiceConverter>)(() => BuildConverter(encoderPath, pitchPath, voicePath))) },
                     config, note => _send("bench", new { running = true, note }), CancellationToken.None);
                 var text = Benchmark.FormatReport(report);

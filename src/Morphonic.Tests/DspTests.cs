@@ -180,6 +180,24 @@ public class DspTests
         Assert.Equal(0, ring.Read(all));
     }
 
+    [Fact]
+    public void SidetoneBacklogIsCutToTheCushionOncePastTheLimit()
+    {
+        // a reader on a slower clock lets the ring fill: past `max` the
+        // oldest samples go and `cushion` remain, else nothing changes
+        var ring = new RingBuffer(1000);
+        var chunk = new float[100];
+        for (int i = 0; i < 100; i++) chunk[i] = 1f;
+        ring.Write(chunk); ring.Write(chunk); ring.Write(chunk);   // 300 queued
+        Assert.False(VoiceController.TrimBacklog(ring, 300, 60));
+        Assert.Equal(300, ring.Count);
+        ring.Write(chunk);                                          // 400 > 300
+        Assert.True(VoiceController.TrimBacklog(ring, 300, 60));
+        Assert.Equal(60, ring.Count);
+        Assert.False(VoiceController.TrimBacklog(ring, 0, 60));    // disabled
+        Assert.False(VoiceController.TrimBacklog(new RingBuffer(10), 5, 2));
+    }
+
     // ── SOLA ───────────────────────────────────────────────────────
 
     [Fact]

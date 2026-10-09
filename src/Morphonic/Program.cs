@@ -35,7 +35,11 @@ internal static class Program
     private static long _lastPingAt;
     private static bool _autoStart;
     private const int PageConnectWatchdogMs = 20_000;
-    private const int HeartbeatTimeoutMs = 60_000;
+    // The page pings every 5 s. A browser that throttles a hidden page's
+    // timers (the window sits in the tray) may slow them to once a minute;
+    // the timeout stays well clear of that, so a healthy page is never
+    // reloaded for being hidden.
+    private const int HeartbeatTimeoutMs = 150_000;
 
     [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -210,8 +214,8 @@ internal static class Program
             }
             catch (Exception ex) { ErrorLog.WriteEntry("SignalHandlers", ex); }
         }
-        ctrl.PickFiles = () => _window.ShowOpenFile("Choose an RVC voice (.pth or .onnx)", null, true,
-            new[] { ("RVC voice", new[] { "*.pth", "*.onnx" }) });
+        ctrl.PickFiles = () => _window.ShowOpenFile("Choose an RVC voice (.pth, .onnx, or the .zip a voice library gave you)", null, true,
+            new[] { ("RVC voice", new[] { "*.pth", "*.onnx", "*.zip" }) });
         ctrl.RestartRequested += RestartApp;
         ctrl.ArmSafeBoot(unfinished != null);
         _autoStart = autoStart && unfinished == null;   // a safe boot never auto-starts
@@ -327,7 +331,8 @@ internal static class Program
         string? lastLine = null;
         manager.OnProgress += (id, done, total, stage) =>
         {
-            var line = $"  {(stage == ModelStage.Assemble ? "assembling" : "downloading")} {id}: {done / 1_000_000} / {total / 1_000_000} MB";
+            var verb = stage == ModelStage.Assemble ? "assembling" : OfflinePayload.Has(id) ? "unpacking" : "downloading";
+            var line = $"  {verb} {id}: {done / 1_000_000} / {total / 1_000_000} MB";
             if (line == lastLine) return;
             lastLine = line;
             Console.Write("\r" + line.PadRight(60));
@@ -337,7 +342,9 @@ internal static class Program
         {
             if (noVoice && m.Kind == ModelKind.Voice) continue;
             if (ModelManager.IsInstalled(m)) { Console.WriteLine($"{m.DisplayName}: already installed"); continue; }
-            Console.WriteLine($"{m.DisplayName}: {m.DownloadBytes / 1_000_000} MB from {m.Download.Url}" + (m.Assembled ? " (assembled here)" : ""));
+            Console.WriteLine(OfflinePayload.Has(m.Id)
+                ? $"{m.DisplayName}: {m.SizeBytes / 1_000_000} MB included in this build, no download"
+                : $"{m.DisplayName}: {m.DownloadBytes / 1_000_000} MB from {m.Download.Url}" + (m.Assembled ? " (assembled here)" : ""));
             var (ok, error) = manager.DownloadAsync(m.Id).GetAwaiter().GetResult();
             Console.WriteLine();
             Console.WriteLine(ok ? $"  {m.File.FileName}: verified, {m.SizeBytes / 1_000_000} MB" : "  FAILED: " + error);

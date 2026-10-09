@@ -70,7 +70,8 @@ public static class VoiceHub
     // verifying the size and, when known, the SHA-256. Returns the
     // library's import message.
     // The file lands under VoiceLibrary.LibraryName(repo, path): a
-    // "model.pth" takes the repository's name. Name is that library name.
+    // "model.pth" takes the repository's name. Name is the library id of
+    // the voice that landed — for a zip, the voice it held, not the zip.
     public static async Task<(bool Ok, string Message, string Name)> DownloadAsync(string repo, string path, long size, string? sha256,
         Action<long, long> progress, CancellationToken ct)
     {
@@ -85,8 +86,8 @@ public static class VoiceHub
             if (size > 0 && got != size) { VoiceLibrary.AbortImport(name); return (false, $"{name}: size mismatch ({got} vs {size} bytes)", name); }
             var hash = Convert.ToHexString(sha.Hash!).ToLowerInvariant();
             if (sha256 != null && hash != sha256) { VoiceLibrary.AbortImport(name); return (false, $"{name}: SHA-256 mismatch — the download is corrupt", name); }
-            var (done, message) = VoiceLibrary.EndImport(name);
-            return (done, message, name);
+            var (done, message) = VoiceLibrary.EndImport(name, out var added);
+            return (done, message, added ?? name);
         }
         catch (OperationCanceledException)
         {

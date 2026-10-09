@@ -3,9 +3,10 @@ using Xunit;
 
 namespace Morphonic.Tests;
 
-// The checkpoint reader and the model assembly: a tiny torch.save file
-// made by PyTorch (Fixtures/tiny_voice.pth) stands in for a voice, and the
-// protobuf and arithmetic helpers are checked on small cases. With
+// The checkpoint reader and the model assembly: a tiny file in torch.save's
+// layout (Fixtures/tiny_voice.pth, written by tools/make_test_fixture.py
+// with the pickle globals and storages torch emits) stands in for a voice,
+// and the protobuf and arithmetic helpers are checked on small cases. With
 // MORPHONIC_TEST_SOURCES pointing at a folder holding pytorch_model.bin
 // (content-vec-best) and f0G40k.pth, the real assemblies are built and
 // must reproduce the catalog's pinned hashes to the byte.
@@ -85,9 +86,10 @@ public class AssemblyTests
     }
 
     [Fact]
-    public void WeightNormAgreesWithTorchOnTheFixture()
+    public void WeightNormAgreesWithTheReferenceOnTheFixture()
     {
-        // n.weight = weight_norm(n.weight_v, n.weight_g, dim=0) as PyTorch computes it (fp16 inputs, fp32 math).
+        // n.weight = weight_norm(n.weight_v, n.weight_g, dim=0): fp16 inputs, the
+        // definition evaluated in float64 and rounded to float32 (tiny_weightnorm.txt).
         using var ck = TorchCheckpoint.Open(Fixture("tiny_voice.pth"));
         var state = ck.StateDict("weight");
         var g = ck.ReadFloat32(state["n.weight_g"]);

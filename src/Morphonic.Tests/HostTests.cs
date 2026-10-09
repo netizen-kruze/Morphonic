@@ -261,15 +261,36 @@ public class AudioDeviceTests
     }
 
     [Fact]
+    public void VirtualMicrophoneModulesAreFoundInPactlOutput()
+    {
+        // "pactl list short modules": id, module, arguments — ours by their names, sink first
+        var text = "3\tmodule-null-sink\tsink_name=other sink_properties=device.description=Other\n" +
+                   "17\tmodule-remap-source\tmaster=morphonic_voice.monitor source_name=morphonic_mic source_properties=device.description=Morphonic-Voice-Mic\n" +
+                   "16\tmodule-null-sink\tsink_name=morphonic_voice sink_properties=device.description=Morphonic-Voice\n" +
+                   "20\tmodule-null-sink\tsink_name=morphonic_voice_2\n" +
+                   "garbage line\n";
+        Assert.Equal(new[] { 16, 17 }, VirtualMic.FindModules(text));
+        Assert.Empty(VirtualMic.FindModules(""));
+        Assert.Empty(VirtualMic.FindModules("1\tmodule-null-sink\tsink_name=x\n"));
+    }
+
+    [Fact]
     public void RecorderAndPlayerCommandsCarryTargetAndFormat()
     {
+        // pw-record twice: with --raw (PipeWire 1.2+), then without (1.0, where a pipe is raw anyway)
         var rec = PipeWireAudio.CaptureCommands("alsa_input.usb-mic").ToList();
-        Assert.Equal(new[] { "pw-record", "parec", "arecord" }, rec.Select(c => c.Label));
+        Assert.Equal(new[] { "pw-record", "pw-record", "parec", "arecord" }, rec.Select(c => c.Label));
+        Assert.Contains("--raw", rec[0].Args);
+        Assert.DoesNotContain("--raw", rec[1].Args);
         Assert.Contains("--target=alsa_input.usb-mic", rec[0].Args);
+        Assert.Contains("--target=alsa_input.usb-mic", rec[1].Args);
         Assert.Contains("--rate=16000", rec[0].Args);
+        Assert.Equal("-", rec[1].Args[^1]);
         var play = PipeWireAudio.PlaybackCommands("morphonic_voice", 40000).ToList();
+        Assert.Equal(new[] { "pw-play", "pw-play", "pacat", "aplay" }, play.Select(c => c.Label));
         Assert.Contains("--rate=40000", play[0].Args);
         Assert.Contains("--target=morphonic_voice", play[0].Args);
+        Assert.DoesNotContain("--raw", play[1].Args);
         Assert.DoesNotContain(PipeWireAudio.PlaybackCommands(null, 48000).First().Args, a => a.StartsWith("--target", StringComparison.Ordinal));
     }
 
