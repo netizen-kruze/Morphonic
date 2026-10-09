@@ -47,7 +47,7 @@ internal static class PipeWireAudio
             pw.Add("--latency=20ms");
             AddTarget(pw, target);
             pw.Add("-");
-            yield return new Command("pw-record", "pw-record", pw.ToArray());
+            yield return new Command(raw ? "pw-record" : "pw-record (PipeWire 1.0, no --raw)", "pw-record", pw.ToArray());
         }
 
         var pa = new List<string> { "--rate=16000", "--channels=1", "--format=s16le", "--raw", "--latency-msec=20" };
@@ -66,7 +66,7 @@ internal static class PipeWireAudio
             pw.Add("--latency=20ms");
             AddTarget(pw, target);
             pw.Add("-");
-            yield return new Command("pw-play", "pw-play", pw.ToArray());
+            yield return new Command(raw ? "pw-play" : "pw-play (PipeWire 1.0, no --raw)", "pw-play", pw.ToArray());
         }
 
         var pa = new List<string> { $"--rate={rate}", "--channels=1", "--format=s16le", "--raw", "--latency-msec=20" };

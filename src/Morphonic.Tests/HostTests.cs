@@ -261,6 +261,23 @@ public class AudioDeviceTests
     }
 
     [Fact]
+    public void AWaylandDisplayCountsOnlyWithItsSocket()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "morphonic-tests-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "wayland-0"), "");
+            Assert.True(LinuxHost.WaylandSocketPresent("wayland-0", dir));
+            Assert.False(LinuxHost.WaylandSocketPresent("wayland-9", dir));
+            Assert.False(LinuxHost.WaylandSocketPresent("wayland-0", null));
+            Assert.True(LinuxHost.WaylandSocketPresent(Path.Combine(dir, "wayland-0"), null));
+            Assert.False(LinuxHost.WaylandSocketPresent(null, dir));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public void VirtualMicrophoneModulesAreFoundInPactlOutput()
     {
         // "pactl list short modules": id, module, arguments — ours by their names, sink first
@@ -293,7 +310,8 @@ public class AudioDeviceTests
     {
         // pw-record twice: with --raw (PipeWire 1.2+), then without (1.0, where a pipe is raw anyway)
         var rec = PipeWireAudio.CaptureCommands("alsa_input.usb-mic").ToList();
-        Assert.Equal(new[] { "pw-record", "pw-record", "parec", "arecord" }, rec.Select(c => c.Label));
+        Assert.Equal(new[] { "pw-record", "pw-record (PipeWire 1.0, no --raw)", "parec", "arecord" }, rec.Select(c => c.Label));
+        Assert.All(rec.Take(2), c => Assert.Equal("pw-record", c.File));
         Assert.Contains("--raw", rec[0].Args);
         Assert.DoesNotContain("--raw", rec[1].Args);
         Assert.Contains("--target=alsa_input.usb-mic", rec[0].Args);
@@ -304,7 +322,7 @@ public class AudioDeviceTests
         Assert.Equal(new[] { "-P", PipeWireAudio.DontReconnect }, rec[0].Args.SkipWhile(a => a != "-P").Take(2));
         Assert.DoesNotContain("-P", PipeWireAudio.CaptureCommands(null).First().Args);
         var play = PipeWireAudio.PlaybackCommands("morphonic_voice", 40000).ToList();
-        Assert.Equal(new[] { "pw-play", "pw-play", "pacat", "aplay" }, play.Select(c => c.Label));
+        Assert.Equal(new[] { "pw-play", "pw-play (PipeWire 1.0, no --raw)", "pacat", "aplay" }, play.Select(c => c.Label));
         Assert.Contains("--rate=40000", play[0].Args);
         Assert.Contains("--target=morphonic_voice", play[0].Args);
         Assert.DoesNotContain("--raw", play[1].Args);

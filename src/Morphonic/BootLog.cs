@@ -36,8 +36,8 @@ public static class BootLog
                 $"data folder:    {AppPaths.DataDir} — {(entries < 0 ? "NOT listable" : entries + " entries, the app's own included")}",
                 $"settings from:  {AppSettings.LastLoadSource}",
                 $"voice:          {(settings.VoiceId.Length == 0 ? "(none chosen)" : settings.VoiceId)} ({voices} voice file(s) in the library)",
-                $"microphone:     {Device(settings.InputDeviceIndex, settings.InputDeviceName)} ({inputs} input device(s) besides the default)",
-                $"output:         {Device(settings.OutputDeviceIndex, settings.OutputDeviceName)} ({outputs} output device(s) besides the default)",
+                $"microphone:     {Device(settings.InputDeviceIndex, settings.InputDeviceName)} ({inputs} input device(s) listed)",
+                $"output:         {Device(settings.OutputDeviceIndex, settings.OutputDeviceName)} ({outputs} output device(s) listed)",
                 $"pitch/block:    {settings.PitchSemitones:+0;-0;0} st, block {settings.BlockMs} ms, context {settings.ExtraMs} ms, crossfade {settings.CrossfadeMs} ms",
                 $"acceleration:   {acceleration}",
             };

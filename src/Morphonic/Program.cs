@@ -161,6 +161,7 @@ internal static class Program
 
         var machineTask = Task.Run(() => MachineProfile.Describe());
         using var ctrl = new VoiceController(SendToUi);
+        _controller = ctrl;
         OnnxHost.Configure(ctrl.Settings.Acceleration);
         if (VirtualMic.Supported && ctrl.Settings.VirtualMic)
         {
@@ -211,12 +212,18 @@ internal static class Program
         }
         else
         {
+            // Closing the window quits; a start still loading its voice must
+            // not open the devices after the close.
+            _window.RegisterWindowClosingHandler((_, _) => { _exiting = true; ctrl.BeginShutdown(); return false; });
             var png = Path.Combine(AppPaths.UiDir, "app.png");
             if (File.Exists(png)) _window.SetIconFile(png);
             try
             {
                 _sigterm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, ctx => { ctx.Cancel = true; RequestExit("SIGTERM"); });
                 _sigint = PosixSignalRegistration.Create(PosixSignal.SIGINT, ctx => { ctx.Cancel = true; RequestExit("SIGINT"); });
+                // The terminal it was started from closed: the same clean exit
+                // (session summary, virtual microphone removed), not a kill.
+                _sighup = PosixSignalRegistration.Create(PosixSignal.SIGHUP, ctx => { ctx.Cancel = true; RequestExit("SIGHUP"); });
             }
             catch (Exception ex) { ErrorLog.WriteEntry("SignalHandlers", ex); }
         }
@@ -273,8 +280,9 @@ internal static class Program
         if (VirtualMic.Supported)
         {
             var had = VirtualMic.Status;
+            bool mine = VirtualMic.Owned;
             VirtualMic.Remove();
-            if (OperatingSystem.IsLinux()) BootLog.Append($"virtual mic: {VirtualMic.Status} (was: {had})");
+            if (OperatingSystem.IsLinux() && mine) BootLog.Append($"virtual mic: {VirtualMic.Status} (was: {had})");
         }
         BootSentinel.Clear();
         return 0;
@@ -460,13 +468,16 @@ internal static class Program
         return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
     }
 
-    private static PosixSignalRegistration? _sigterm, _sigint;
+    private static PosixSignalRegistration? _sigterm, _sigint, _sighup;
+    private static VoiceController? _controller;
 
     private static void RequestExit(string why)
     {
         if (_exiting) return;
         _exiting = true;
         BootLog.Append($"exit requested by {why}");
+        // A start still loading its voice must not open the devices after this.
+        _controller?.BeginShutdown();
         CloseWindowOrExit();
         _ = Task.Delay(10_000).ContinueWith(_ => { try { Environment.Exit(0); } catch { } });
     }

@@ -84,6 +84,9 @@ public static class VirtualMic
         return true;
     }
 
+    // Whether this process holds modules Remove would unload.
+    public static bool Owned => Modules.Count > 0;
+
     public static void Remove()
     {
         if (!OperatingSystem.IsLinux()) return;   // the Windows driver is persistent

@@ -81,6 +81,11 @@ public sealed class VoiceController : IDisposable
 
     public void ArmSafeBoot(bool safeBoot) => _safeBoot = safeBoot;
 
+    // The host is on its way out: a start that is still loading its voice
+    // stops short of opening the devices, and no new start begins.
+    private volatile bool _closing;
+    public void BeginShutdown() => _closing = true;
+
     // The host calls this on the page's first message (window thread).
     public void UiConnected()
     {
@@ -721,6 +726,7 @@ public sealed class VoiceController : IDisposable
         lock (_sessionLock)
         {
             Stop("replaced");
+            if (_closing) return;
             string? problem = null;
             if (Volatile.Read(ref _benchRunning) != 0) problem = "Wait for the speed check to finish";
             else if (!ModelManager.ComponentsReady()) problem = "The content encoder and pitch model must be downloaded first — see Models";
@@ -816,6 +822,7 @@ public sealed class VoiceController : IDisposable
     private void StartSession()
     {
         var converter = LoadConverter();
+        if (_closing) { BootLog.Append("start abandoned: the app is closing"); return; }
         converter.PitchSemitones = _settings.PitchSemitones;
         converter.SpeakerId = _settings.SpeakerId;
         var engine = new RealtimeEngine(converter, new EngineConfig
