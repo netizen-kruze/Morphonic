@@ -444,36 +444,57 @@ stored without the executable bit; they have it now.
 
 ## Runtime matrix
 
-Twenty scripted scenarios, each in its own data folder with the models
-hard-linked in, judged by an agent from the full logs. Run 1 (binary from
-`a6e7e41`): 12 / 20 passed outright; of the 8 failures, 3 were harness
-mistakes (SIGINT ignored by a child started from a non-interactive shell,
-a per-user marker the script expected per folder, a manifest the fixture
-did not link), the rest were items 2–5 above and a wrong expectation
-about the WebKitGTK profile path. Run 2 (binary from `eac4048`, corrected
-harness): passed the 6 scenarios it reached (s01, s02, s03, s06, s07, s20) before the session's agent allowance ran out; the remaining 14 were not re-run as a batch. On the final binary, run by hand: `tools/smoke.sh` with the models 11 / 11 (now requiring real conversion passes), s04 (virtual microphone lifecycle with the new removal line) and s24 (`--after` restart handshake) pass.
+Twenty-eight scripted scenarios, each in its own data folder with the
+models hard-linked in. History: run 1 (binary from `a6e7e41`) passed 12 of
+the first 20 outright; of the 8 failures, 3 were harness mistakes (SIGINT
+ignored by a child started from a non-interactive shell, a per-user marker
+the script expected per folder, a manifest the fixture did not link), the
+rest were items 2–5 above and a wrong expectation about the WebKitGTK
+profile path. Run 2 (binary from `eac4048`) passed the 6 it reached before
+the session's agent allowance ran out.
 
-| # | Scenario | Checks |
-|---|---|---|
-| s01/s02 | `tools/smoke.sh` without and with the models | PASS/FAIL lines, pw-record / pw-play in the boot log |
-| s03 | 75 s auto-started session on the PipeWire defaults | summary with passes, no error.log, UI and tools unpacked |
-| s04 | virtual microphone on | `morphonic_voice` / `morphonic_mic` exist while running, listed by pw-dump, output routed into the sink, sidetone Auto on the default output, both gone at exit |
-| s05 | leftover sink from a dead run of this folder | adopted and removed at exit |
-| s06 | SIGTERM and SIGINT mid-session | exit 0 within 20 s, "exit requested by", summary written |
-| s07 | second instance on the same data folder | exits 0 at once with "already running", lock released afterwards |
-| s08 | damaged settings.json with a good .bak | restored, `.corrupt` kept, good copy written back, first-run marker |
-| s09 | `--install`, re-install in place, boot from the copy, `--uninstall`, `--purge` | files, desktop entry, icons, data folder kept then removed |
-| s10 | `--report` | zip contents, PipeWire devices in system.txt, no half-written zip in the listing |
-| s11 | `--convert` with the bench clip at 0 and +12 semitones | 40 kHz, length, non-silent, f0 ratio ≈ 2 (autocorrelation) |
-| s12 | `--bench`, and without a chosen voice | row with verdict, bench.log, refusal exits 1 at once |
-| s13 | `--pack-offline`, then the offline binary's `--fetch-models` with no network | 3 files verified, "included in this build", byte-identical model, repack replaces the payload, smoke.sh passes on it |
-| s14 | `--fetch-models` with Hugging Face unreachable | exit 1 with a sentence, nothing half-made |
-| s15 | boot sentinel left behind | safe boot, `--auto-start` ignored once, normal afterwards |
-| s16 | Steam-like LD_PRELOAD / LD_LIBRARY_PATH | re-exec'd child runs the window, exit 0 |
-| s17 | no display; `--help`; bad `--convert` / `--pack-offline` arguments | exit 1 with the message and an error.log note; usage, exit 2 |
-| s18 | chosen microphone, then chosen output, removed mid-session | session ends with the right reason, app keeps running, clean exit |
-| s19 | 150 s session with the virtual microphone and sidetone | full summary, memory flat (~1.47 GB RSS), removal logged |
-| s20 | data folder path with spaces and non-ASCII | session and `--report` work |
+**Full run on 1.0.2** (`releases/Morphonic-1.0.2-linux-x64`, one scenario
+after another, the test devices restored before each): all 28 pass, with
+s27's read-only-folder part skipped as root. Four failed on the first
+pass, each a harness mistake, fixed and run again: s05 still expected any
+leftover sink to be adopted (the ownership record came later; it now
+plants the record of a dead run, and also checks that a sink without one
+is left alone), s06 and s19 matched the summary line with doubled
+backslashes, and s21 recorded `morphonic_voice.monitor` with pw-record,
+which knows only node names and quietly recorded the default source
+instead (it now records the virtual microphone, what other programs
+hear). The counts are each scenario's PASS lines, smoke.sh's own included
+where it runs.
+
+| # | Scenario | Checks | 1.0.2 |
+|---|---|---|---|
+| s01/s02 | `tools/smoke.sh` without and with the models | PASS/FAIL lines, pw-record / pw-play in the boot log | 10 / 10, 15 / 15 |
+| s03 | 75 s auto-started session on the PipeWire defaults | summary with passes, no error.log, UI and tools unpacked | 8 / 8 |
+| s04 | virtual microphone on | `morphonic_voice` / `morphonic_mic` exist while running, listed by pw-dump, output routed into the sink, sidetone Auto on the default output, both gone at exit | 12 / 12 |
+| s05 | leftover virtual microphone, with and without the record of a dead run of this folder | adopted and removed at exit, record deleted; without the record used and left in place | 10 / 10 |
+| s06 | SIGTERM and SIGINT mid-session; SIGTERM while the voice is still loading | exit 0 within 20 s, "exit requested by", summary written; during the load "start abandoned: the app is closing", no voice started | 16 / 16 |
+| s07 | second instance on the same data folder | exits 0 at once with "already running", lock released afterwards | 6 / 6 |
+| s08 | damaged settings.json with a good .bak | restored, `.corrupt` kept, good copy written back, first-run marker | 9 / 9 |
+| s09 | `--install`, re-install in place, boot from the copy, `--uninstall`, `--purge` | files, desktop entry, icons, data folder kept then removed | 13 / 13 |
+| s10 | `--report` | zip contents, PipeWire devices in system.txt, no half-written zip in the listing | 8 / 8 |
+| s11 | `--convert` with the bench clip at 0 and +12 semitones | 40 kHz, length, non-silent, f0 ratio ≈ 2 (autocorrelation) | 7 / 7 |
+| s12 | `--bench`, and without a chosen voice | row with verdict, bench.log, refusal exits 1 at once | 6 / 6 |
+| s13 | `--pack-offline`, then the offline binary's `--fetch-models` with no network | 3 files verified, "included in this build", byte-identical model, repack replaces the payload, smoke.sh passes on it | 12 / 12 |
+| s14 | `--fetch-models` with Hugging Face unreachable | exit 1 with a sentence, nothing half-made | 4 / 4 |
+| s15 | boot sentinel left behind | safe boot, `--auto-start` ignored once, normal afterwards | 7 / 7 |
+| s16 | Steam-like LD_PRELOAD / LD_LIBRARY_PATH | re-exec'd child runs the window, exit 0 | 4 / 4 |
+| s17 | no display; `--help`; bad `--convert` / `--pack-offline` arguments | exit 1 with the message and an error.log note; usage, exit 2 | 8 / 8 |
+| s18 | chosen microphone, then chosen output, removed mid-session | session ends with the right reason, app keeps running, clean exit | 8 / 8 |
+| s19 | 150 s session with the virtual microphone and sidetone | full summary (288 passes, 0 underruns, one sidetone catch-up), memory flat (~1.45 GB RSS), removal logged | 6 / 6 |
+| s20 | data folder path with spaces and non-ASCII | session and `--report` work | 5 / 5 |
+| s21 | real speech (the bench clip, looped) through the live path into the virtual microphone | recorded at 40 kHz, non-silent, pitched, f0 follows the clip at 0 semitones (median 96 Hz against the clip's 92 Hz, 968 voiced frames) | 7 / 7 |
+| s22 | capture tool killed, playback tool killed, recorder frozen (SIGSTOP), each mid-session | app keeps running; "microphone capture failed … exit code 137", "playback failed", "delivered no audio for 5 s"; no stray child | 13 / 13 |
+| s23 | PipeWire tools shimmed to fail | voice on parec / pacat, devices through pactl, `--report` lists them | 6 / 6 |
+| s24 | `--after` restart handshake | the new instance waits for the old one, then runs | 4 / 4 |
+| s25 | a garbage GPU pack in the data folder | no crash, falls back to the CPU with the reason, `--install-gpu` reports the failure | 6 / 6 |
+| s26 | pace advice for small blocks, sidetone to a named device and off, a saved device that is gone, `--bench` under `de_DE` | advice names the next block size, sidetone lines, default input and output resolved by name, decimal point kept | 11 / 11 |
+| s27 | damaged voice file, crash record via fake coredumpctl / journalctl, read-only data folder | start fails into error.log, no crash; coredumpctl asked for the 15-byte process name, only Morphonic's lines kept; read-only part skipped as root | 6 / 6 |
+| s28 | two instances with two data folders and the virtual microphone, dead Wayland socket, SIGHUP, SIGTERM to a Steam re-exec parent | the second uses the sink without adopting it, the first removes it; refusal in words; clean exits, no orphan | 12 / 12 |
 
 Not covered on this box: anything that needs a click in the page (WebKitGTK
 exposes no remote-debugging port here, unlike WebView2 on Windows), the
@@ -488,27 +509,13 @@ PipeWire graph and writes `env.sh` to `$MORPHONIC_SCENARIOS` (default
 `/tmp/morphonic-scenarios`, where the runs go too); `scenario.sh` holds the
 helpers; each `sNN_*.sh` is one scenario, run as
 `MODELS_DATA=<a data folder filled by --fetch-models> bash tools/linux-scenarios/s04_virtual_mic.sh`
-against `releases/Morphonic-<version>-linux-x64` (or `BIN=`). Scenarios s21–s28 were written from the
-critic's list (real speech through the live path with pitch analysis, a
-killed or frozen capture/playback tool, the PulseAudio-only fallback with
-shimmed PipeWire tools, the `--after` handshake, a garbage GPU pack, the
-pace-advice and sidetone variants plus a `de_DE` locale check, a damaged
-voice file and a crash record read through fake coredumpctl/journalctl, a
-read-only data folder, two instances with two data folders, a dead
-Wayland socket, SIGHUP, and SIGTERM to a Steam re-exec parent); s24, s27
-and s28 have run. The code added for them all ran end to end in s28 except
-the abandoned start when the window closes during a voice load, which needs
-a window close this box cannot deliver to WebKitGTK (no window manager).
-s27's read-only-folder part skips as root, which writes through mode 555;
-it needs a normal user. Not run yet: s21–s23, s25, s26, and s05, s08,
-s10–s19 on the final binary.
+against `releases/Morphonic-<version>-linux-x64` (or `BIN=`). The
+scenarios share the PipeWire graph and the virtual microphone's names, so
+they run one at a time; s05, s18 and s21 add or remove devices and put
+them back. Unit tests on the same binary: 64 / 64 with the models.
 
-On the 1.0.2 binary (`releases/Morphonic-1.0.2-linux-x64`): unit tests
-64 / 64 with the models; `tools/smoke.sh` with the models passes (voice on
-`pw-record` / `pw-play` "(PipeWire 1.0, no --raw)"); s09 13 / 13 (install,
-re-install, boot from the copy, uninstall, purge); s28 12 / 12 (two
-instances sharing the virtual microphone without adopting it, the dead
-Wayland socket, SIGHUP, SIGTERM to a Steam re-exec parent with no orphan
-left); s27 6 / 6 of the parts that run as root (a damaged voice file ends
-the start with an error.log entry, no crash; the crash record asks
-coredumpctl for the 15-byte process name and keeps only Morphonic's lines).
+The start abandoned when the app closes during a voice load ran through
+SIGTERM (s06), which calls the same `BeginShutdown` as the window's close
+handler; that one-line handler itself needs a window manager to trigger.
+Left: the close handler, s27's read-only data folder as a normal user,
+and everything under "Not covered" above.
