@@ -3,15 +3,27 @@
 #   source scenario.sh; fresh_data NAME [with-models]; run_app NAME [args...]
 # Every scenario gets its own data folder under RUNS/NAME (single-instance
 # lock is per data folder), the models hard-linked in (instant, no copy).
+#
+# All optional:
+#   BIN                  binary under test; default releases/Morphonic-<csproj version>-linux-x64
+#   MODELS_DATA          a data folder the app filled with `--fetch-models --data-dir`
+#                        (models/ and voices/ inside); default $MORPHONIC_SCENARIOS/models-data
+#   MORPHONIC_SCENARIOS  where start-audio.sh writes env.sh and the runs go;
+#                        default ${TMPDIR:-/tmp}/morphonic-scenarios
 set -u
-ENVDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$ENVDIR/env.sh"
-SCRATCH="$(cd "$ENVDIR/.." && pwd)"
-export BIN="${BIN:-/home/user/Morphonic/releases/Morphonic-1.0.1-linux-x64}"
-export MODELS="$SCRATCH/release/models-data/models"
-export VOICES="$SCRATCH/release/models-data/voices"
-export RUNS="$SCRATCH/runs"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export MORPHONIC_SCENARIOS="${MORPHONIC_SCENARIOS:-${TMPDIR:-/tmp}/morphonic-scenarios}"
+[ -f "$MORPHONIC_SCENARIOS/env.sh" ] && source "$MORPHONIC_SCENARIOS/env.sh"
+VER="$(sed -n 's/.*<Version>\([^<]*\)<\/Version>.*/\1/p' "$REPO/src/Morphonic/Morphonic.csproj" | head -n 1)"
+export BIN="${BIN:-$REPO/releases/Morphonic-$VER-linux-x64}"
+export MODELS_DATA="${MODELS_DATA:-$MORPHONIC_SCENARIOS/models-data}"
+export MODELS="$MODELS_DATA/models"
+export VOICES="$MODELS_DATA/voices"
+export RUNS="$MORPHONIC_SCENARIOS/runs"
 mkdir -p "$RUNS"
+
+# hard links when the models sit on the same file system, copies otherwise
+link_in() { cp -l "$@" 2>/dev/null || cp "$@"; }
 
 # fresh_data NAME [with-models] -> echoes the data dir
 fresh_data() {
@@ -20,8 +32,8 @@ fresh_data() {
   rm -rf "$RUNS/$name"; mkdir -p "$d"
   if [ "$with" = "with-models" ]; then
     mkdir -p "$d/models" "$d/voices"
-    cp -l "$MODELS/contentvec-768-layer12.onnx" "$MODELS/rmvpe.onnx" "$MODELS/models_manifest.json" "$d/models/"
-    cp -l "$VOICES/sample-voice-40k.onnx" "$d/voices/"
+    link_in "$MODELS/contentvec-768-layer12.onnx" "$MODELS/rmvpe.onnx" "$MODELS/models_manifest.json" "$d/models/"
+    link_in "$VOICES/sample-voice-40k.onnx" "$d/voices/"
     echo '{ "VoiceId": "sample-voice-40k.onnx", "Acceleration": "cpu", "PitchSemitones": 3, "VirtualMic": false }' > "$d/settings.json"
   fi
   echo "$d"

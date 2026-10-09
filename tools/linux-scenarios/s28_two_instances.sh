@@ -35,7 +35,7 @@ alive=$(kill -0 $APP_PID 2>/dev/null && echo 1 || echo 0); [ $alive = 1 ] && kil
 wait $APP_PID; code=$?
 show_logs $N
 check "SIGHUP: exits 0 within 20 s" "$([ $alive = 0 ] && [ $code = 0 ] && echo 1 || echo 0)"
-check "SIGHUP: exit requested by SIGHUP, summary written, sink removed" "$(has_log $N 'exit requested by SIGHUP' && has_log $N 'voice session ended \(exiting\)' && ! pactl list short sinks | grep -q morphonic_voice && echo 1 || echo 0)"
+check "SIGHUP: exit requested by SIGHUP, summary written, sink removed" "$([ "$(has_log $N 'exit requested by SIGHUP')" = 1 ] && [ "$(has_log $N 'voice session ended \(exiting\)')" = 1 ] && ! pactl list short sinks | grep -q morphonic_voice && echo 1 || echo 0)"
 # Steam re-exec: a SIGTERM to the parent reaches the app
 N=s28_steam; D="$(fresh_data $N with-models)"; live_settings "$D" false 500 1000
 set -m; LD_PRELOAD=/nonexistent/gameoverlayrenderer.so "$BIN" --data-dir "$D" --auto-start --run-seconds 300 >"$RUNS/$N/stdout.txt" 2>"$RUNS/$N/stderr.txt" & P=$!; set +m
@@ -44,7 +44,7 @@ sleep 3; kill -TERM $P
 for _ in $(seq 1 20); do kill -0 $P 2>/dev/null || break; sleep 1; done
 alive=$(kill -0 $P 2>/dev/null && echo 1 || echo 0); [ $alive = 1 ] && kill -9 $P
 wait $P; code=$?
-sleep 2; orphan=$(pgrep -f "Morphonic-1.0.1-linux-x64 --data-dir $D" | wc -l)
+sleep 2; orphan=$(pgrep -f "$(basename "$BIN") --data-dir $D" | wc -l)
 show_logs $N
 check "Steam re-exec: SIGTERM to the parent ends the app (exit requested by SIGTERM)" "$(has_log $N 'exit requested by SIGTERM')"
 check "Steam re-exec: parent exits 0 and no orphan child remains" "$([ $alive = 0 ] && [ $code = 0 ] && [ "$orphan" = 0 ] && echo 1 || echo 0)"

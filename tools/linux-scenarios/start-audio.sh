@@ -2,9 +2,12 @@
 # Brings up a headless desktop for the Linux tests: an Xvfb display, a D-Bus
 # session, a PipeWire graph (pipewire + wireplumber + pipewire-pulse) with a
 # null sink "TestSpeakers" (whose monitor is the default microphone) so the
-# app has devices to open. Writes the environment to env.sh for later shells.
+# app has devices to open. Writes the environment to env.sh for later shells,
+# with the logs, in $MORPHONIC_SCENARIOS (default ${TMPDIR:-/tmp}/morphonic-scenarios),
+# where scenario.sh reads it.
 set -u
-ENVDIR="$(cd "$(dirname "$0")" && pwd)"
+ENVDIR="${MORPHONIC_SCENARIOS:-${TMPDIR:-/tmp}/morphonic-scenarios}"
+mkdir -p "$ENVDIR"
 export XDG_RUNTIME_DIR=/tmp/xdg-morphonic
 mkdir -p "$XDG_RUNTIME_DIR" && chmod 700 "$XDG_RUNTIME_DIR"
 export DISPLAY=:99

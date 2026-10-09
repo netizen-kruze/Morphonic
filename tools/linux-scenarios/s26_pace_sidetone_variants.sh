@@ -18,7 +18,7 @@ PY
 run_app $N --auto-start --run-seconds 45; code=$?
 show_logs $N
 check "sidetone device: exit 0" "$([ $code = 0 ] && echo 1 || echo 0)"
-check "sidetone device: named device, not auto" "$(has_log $N 'sidetone: pw-play.*Test-Speakers' && ! grep -q 'sidetone: .*(auto)' "$D/last_boot.log" && echo 1 || echo 0)"
+check "sidetone device: named device, not auto" "$([ "$(has_log $N 'sidetone: pw-play.*Test-Speakers')" = 1 ] && ! grep -q 'sidetone: .*(auto)' "$D/last_boot.log" && echo 1 || echo 0)"
 # sidetone off while the output is the virtual mic
 N=s26_off; D="$(fresh_data $N with-models)"; live_settings "$D" true 500 1000
 python3 - "$D/settings.json" <<'PY'

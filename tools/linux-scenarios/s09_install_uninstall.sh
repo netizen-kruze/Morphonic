@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 source "$(dirname "$0")/_common.sh"
 N=s09_install; rm -rf "$RUNS/$N"; mkdir -p "$RUNS/$N/home" "$RUNS/$N/dl"
-cp "$BIN" "$RUNS/$N/dl/Morphonic-1.0.1-linux-x64"; chmod +x "$RUNS/$N/dl/Morphonic-1.0.1-linux-x64"
+B="$RUNS/$N/dl/$(basename "$BIN")"   # as downloaded, under the release file name
+cp "$BIN" "$B"; chmod +x "$B"
 export HOME="$RUNS/$N/home"; unset XDG_DATA_HOME XDG_CONFIG_HOME
-B="$RUNS/$N/dl/Morphonic-1.0.1-linux-x64"
 out="$("$B" --install 2>&1)"; code=$?; echo "$out"
 check "--install exits 0" "$([ $code = 0 ] && echo 1 || echo 0)"
 check "binary copied to ~/.local/share/Morphonic/app/Morphonic and executable" "$([ -x "$HOME/.local/share/Morphonic/app/Morphonic" ] && echo 1 || echo 0)"
