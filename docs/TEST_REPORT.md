@@ -258,6 +258,12 @@ included model files on `--fetch-models` with no network (all three
 verified against the pinned hashes) and starts with them. Nothing in
 `error.log` in any run.
 
+## Release 1.0.1 published
+
+v1.0.1 was published from the draft on 2026-10-09 (UTC) with the four
+files and `SHA256SUMS.txt`, tag on the `main` commit the files were built
+from; GitHub's latest-release feed answers with it.
+
 ## "VRCNext goes black when Morphonic opens" — the test driver, not the app
 
 Reported on the development PC, where VRCNext (another Photino app) runs
