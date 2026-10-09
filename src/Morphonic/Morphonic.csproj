@@ -12,7 +12,7 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
     <AssemblyName>Morphonic</AssemblyName>
     <RootNamespace>Morphonic</RootNamespace>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Product>Morphonic</Product>
     <AssemblyTitle>Morphonic — real-time RVC voice changer</AssemblyTitle>
     <Company>Morphonic</Company>
