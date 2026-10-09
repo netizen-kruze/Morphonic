@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Real speech through the live path: the bench clip is played into a sink
 # whose monitor is the app's microphone; the app's output goes into the
-# virtual microphone sink, whose monitor is recorded. The recording must be
-# speech-like (non-silent, pitched) and track the clip's pitch.
+# virtual microphone sink, and the virtual microphone (morphonic_mic, what
+# other programs pick) is recorded. "morphonic_voice.monitor" is a
+# PulseAudio name only: pw-record does not find it and records the default
+# source instead. The recording must be speech-like (non-silent, pitched)
+# and track the clip's pitch.
 source "$(dirname "$0")/_common.sh"
 N=s21_speech; D="$(fresh_data $N with-models)"
 echo '{ "VoiceId": "sample-voice-40k.onnx", "Acceleration": "cpu", "PitchSemitones": 0, "VirtualMic": true, "BlockMs": 500, "ExtraMs": 1000, "InputDeviceIndex": 1, "InputDeviceName": "Speech-In-Mic", "SidetoneAuto": false }' > "$D/settings.json"
@@ -15,8 +18,8 @@ wait_for $N 'voice started' 70 || echo "(voice did not start within 70 s)"
 sleep 2
 ( for _ in 1 2 3 4 5 6; do pw-play --target=SpeechIn "$RUNS/$N/clip.wav" 2>/dev/null; done ) &
 PLAYER=$!
-sleep 6   # let the pipeline fill, then record 40 s of the voice from the virtual microphone's sink monitor
-timeout 40 pw-record --target=morphonic_voice.monitor --rate=40000 --channels=1 --format=s16 "$RUNS/$N/voice.wav" 2>"$RUNS/$N/rec.err" || true
+sleep 6   # let the pipeline fill, then record 40 s of the voice from the virtual microphone
+timeout 40 pw-record --target=morphonic_mic --rate=40000 --channels=1 --format=s16 "$RUNS/$N/voice.wav" 2>"$RUNS/$N/rec.err" || true
 kill $PLAYER 2>/dev/null; pkill -f "pw-play --target=SpeechIn" 2>/dev/null
 wait $APP_PID; code=$?
 show_logs $N

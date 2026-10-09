@@ -6,7 +6,7 @@ N=s19_long; D="$(fresh_data $N with-models)"; live_settings "$D" true 500 1000
 run_app $N --auto-start --run-seconds 150; code=$?
 show_logs $N
 check "exit 0" "$([ $code = 0 ] && echo 1 || echo 0)"
-check "session ran to the end (summary with passes)" "$(has_log $N 'voice session ended \\(exiting\\) after 2\\.[0-9] min .*[1-9][0-9]* passes')"
+check "session ran to the end (summary with passes)" "$(has_log $N 'voice session ended \(exiting\) after 2\.[0-9] min .*[1-9][0-9]* passes')"
 check "virtual mic removal logged at exit" "$(has_log $N 'virtual mic: removed')"
 check "no error.log entries" "$(errlog_empty $N)"
 check "virtual mic created and removed" "$( [ "$(has_log $N 'virtual mic: created')" = 1 ] && ! pactl list short sinks | grep -q morphonic_voice && echo 1 || echo 0)"
