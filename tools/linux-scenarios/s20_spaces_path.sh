@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 source "$(dirname "$0")/_common.sh"
 N=s20_spaces; rm -rf "$RUNS/$N"; D="$RUNS/$N/data dir ü (test)"; mkdir -p "$D/models" "$D/voices"
-cp -l "$MODELS/contentvec-768-layer12.onnx" "$MODELS/rmvpe.onnx" "$D/models/"; cp -l "$VOICES/sample-voice-40k.onnx" "$D/voices/"
+link_in "$MODELS/contentvec-768-layer12.onnx" "$MODELS/rmvpe.onnx" "$D/models/"; link_in "$VOICES/sample-voice-40k.onnx" "$D/voices/"
 live_settings "$D" false 500 1000
 "$BIN" --data-dir "$D" --auto-start --run-seconds 45 >"$RUNS/$N/stdout.txt" 2>"$RUNS/$N/stderr.txt"; code=$?
 echo "--- last_boot.log"; cat "$D/last_boot.log"; echo "--- error.log"; cat "$D/error.log" 2>/dev/null || echo "(none)"

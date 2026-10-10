@@ -242,6 +242,9 @@ one registry value under `HKEY_CURRENT_USER\Software\Morphonic` (records that
 the app has run before); Linux keeps `~/.config/Morphonic/last_run` and
 WebKitGTK's page storage and cache under `~/.local/share/<binary name>/`
 and `~/.cache/<binary name>/`, and `--uninstall --purge` removes everything.
+(A binary you renamed to something that no longer starts with "Morphonic"
+leaves those two page-cache folders for you to delete: the purge never
+touches a folder that is not named after Morphonic.)
 
 ## Privacy & network
 

@@ -101,7 +101,7 @@ public static class LinuxInstaller
             if (Directory.Exists(marker)) Directory.Delete(marker, recursive: true);
             // WebKitGTK keeps the page's storage and cache under the binary's
             // own name (the download's file name, or "Morphonic" once installed).
-            foreach (var name in new[] { "Morphonic", Path.GetFileName(Environment.ProcessPath ?? "") }.Where(n => n.Length > 0).Distinct())
+            foreach (var name in PurgeNames(Path.GetFileName(Environment.ProcessPath ?? "")))
             {
                 foreach (var dir in new[] { Path.Combine(LinuxHost.DataHome, name), Path.Combine(LinuxHost.CacheHome, name) })
                     try { if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true); } catch { }
@@ -112,6 +112,21 @@ public static class LinuxInstaller
         {
             return new Result(false, "uninstall failed: " + ex.Message);
         }
+    }
+
+    // The folder names --purge deletes under ~/.local/share and ~/.cache:
+    // "Morphonic", and the running binary's own file name only while it
+    // still begins with "Morphonic" (every released file does). A binary
+    // someone renamed could carry the name of another program's folder,
+    // and that folder is not ours to delete; its few MB of page cache stay.
+    internal static IReadOnlyList<string> PurgeNames(string binaryName)
+    {
+        var names = new List<string> { "Morphonic" };
+        if (binaryName.StartsWith("Morphonic", StringComparison.OrdinalIgnoreCase) &&
+            binaryName.IndexOfAny(new[] { '/', '\\' }) < 0 &&
+            !names.Contains(binaryName))
+            names.Add(binaryName);
+        return names;
     }
 
     private static void TryDelete(string path)

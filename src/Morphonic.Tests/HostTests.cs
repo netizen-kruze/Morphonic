@@ -174,6 +174,20 @@ public class PlatformTests
     }
 
     [Fact]
+    public void PurgeOnlyTouchesFoldersNamedAfterMorphonic()
+    {
+        // --uninstall --purge deletes ~/.local/share/<name> and ~/.cache/<name>:
+        // the release file's own name, never whatever a renamed binary is called
+        Assert.Equal(new[] { "Morphonic" }, LinuxInstaller.PurgeNames("Morphonic"));
+        Assert.Equal(new[] { "Morphonic", "Morphonic-1.0.2-linux-x64" }, LinuxInstaller.PurgeNames("Morphonic-1.0.2-linux-x64"));
+        Assert.Equal(new[] { "Morphonic", "morphonic-offline" }, LinuxInstaller.PurgeNames("morphonic-offline"));
+        Assert.Equal(new[] { "Morphonic" }, LinuxInstaller.PurgeNames("keyrings"));
+        Assert.Equal(new[] { "Morphonic" }, LinuxInstaller.PurgeNames("applications"));
+        Assert.Equal(new[] { "Morphonic" }, LinuxInstaller.PurgeNames(""));
+        Assert.Equal(new[] { "Morphonic" }, LinuxInstaller.PurgeNames("Morphonic/../keyrings"));
+    }
+
+    [Fact]
     public void HardwareJudgementsAreExplainedAndTiered()
     {
         Assert.Equal(Tier.Gpu, HardwareTier.Classify(true, 16, 32));

@@ -207,7 +207,9 @@ internal static class Program
                     if (!_windowUp) return;
                     _window.Invoke(() => { ShowWindow(_window.WindowHandle, SW_SHOW); SetForegroundWindow(_window.WindowHandle); });
                 };
-                tray.OnExit += () => { _exiting = true; CloseWindowOrExit(); };
+                // Exit from the tray: as on Linux, a start still loading its
+                // voice must not open the devices after this.
+                tray.OnExit += () => { _exiting = true; ctrl.BeginShutdown(); CloseWindowOrExit(); };
             }
         }
         else

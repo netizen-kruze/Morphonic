@@ -10,6 +10,11 @@
 #                        (models/ and voices/ inside); default $MORPHONIC_SCENARIOS/models-data
 #   MORPHONIC_SCENARIOS  where start-audio.sh writes env.sh and the runs go;
 #                        default ${TMPDIR:-/tmp}/morphonic-scenarios
+#
+# Keep MODELS_DATA and MORPHONIC_SCENARIOS on one file system. Across two,
+# every run folder gets a full copy of the models (850 MB) instead of hard
+# links, and where /tmp is a RAM-backed tmpfs (Fedora) the 28 scenarios fill
+# it. The simple choice there: both under $HOME.
 set -u
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export MORPHONIC_SCENARIOS="${MORPHONIC_SCENARIOS:-${TMPDIR:-/tmp}/morphonic-scenarios}"

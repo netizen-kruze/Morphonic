@@ -102,27 +102,41 @@ public class VoiceLibraryTests
             Assert.True(VoiceLibrary.IsUserFolder(VoiceLibrary.Dir));
             Assert.True(VoiceLibrary.IsUserFolder(Path.GetPathRoot(dir)!));
             Assert.False(VoiceLibrary.IsUserFolder(folder));
-            // the desktop's own (localized) folders and mount points say nothing either
-            var known = new[] { "/home/u/Téléchargements", "/home/u/Descargas" };
-            Assert.True(VoiceLibrary.IsUserFolder("/home/u/Téléchargements/", known));
-            Assert.True(VoiceLibrary.IsUserFolder("/home/u/Descargas", known));
-            Assert.False(VoiceLibrary.IsUserFolder("/home/u/Descargas/SpongeBob", known));
-            Assert.True(VoiceLibrary.IsUserFolder("/media/u/KINGSTON", known));
-            Assert.True(VoiceLibrary.IsUserFolder("/run/media/u/KINGSTON", known));
-            Assert.True(VoiceLibrary.IsUserFolder("/mnt/usb", known));
-            Assert.True(VoiceLibrary.IsUserFolder("/media/usb", known));
-            Assert.False(VoiceLibrary.IsUserFolder("/mnt/usb/Voices/SpongeBob", known));
-            // ~/.config/user-dirs.dirs
-            var dirs = VoiceLibrary.ParseXdgUserDirs(new[]
+            // the desktop's own (localized) folders say nothing either; the
+            // paths are each platform's own, since they are compared in full
+            if (OperatingSystem.IsWindows())
             {
-                "# This file is written by xdg-user-dirs-update",
-                "XDG_DESKTOP_DIR=\"$HOME/Bureau\"",
-                "XDG_DOWNLOAD_DIR=\"$HOME/Téléchargements\"",
-                "XDG_MUSIC_DIR=\"$HOME\"",
-                "XDG_VIDEOS_DIR=\"/srv/videos/\"",
-                "NOT_A_DIR=\"$HOME/x\"",
-            }, "/home/u").ToArray();
-            Assert.Equal(new[] { "/home/u/Bureau", "/home/u/Téléchargements", "/home/u", "/srv/videos" }, dirs);
+                var known = new[] { @"C:\Users\u\Téléchargements", @"C:\Users\u\Descargas" };
+                Assert.True(VoiceLibrary.IsUserFolder(@"C:\Users\u\Téléchargements\", known));
+                Assert.True(VoiceLibrary.IsUserFolder(@"c:\users\u\descargas", known));
+                Assert.False(VoiceLibrary.IsUserFolder(@"C:\Users\u\Descargas\SpongeBob", known));
+                Assert.True(VoiceLibrary.IsUserFolder(@"D:\", known));   // a drive's root (a USB stick)
+                Assert.False(VoiceLibrary.IsUserFolder(@"D:\Voices\SpongeBob", known));
+            }
+            else
+            {
+                var known = new[] { "/home/u/Téléchargements", "/home/u/Descargas" };
+                Assert.True(VoiceLibrary.IsUserFolder("/home/u/Téléchargements/", known));
+                Assert.True(VoiceLibrary.IsUserFolder("/home/u/Descargas", known));
+                Assert.False(VoiceLibrary.IsUserFolder("/home/u/Descargas/SpongeBob", known));
+                // mount points
+                Assert.True(VoiceLibrary.IsUserFolder("/media/u/KINGSTON", known));
+                Assert.True(VoiceLibrary.IsUserFolder("/run/media/u/KINGSTON", known));
+                Assert.True(VoiceLibrary.IsUserFolder("/mnt/usb", known));
+                Assert.True(VoiceLibrary.IsUserFolder("/media/usb", known));
+                Assert.False(VoiceLibrary.IsUserFolder("/mnt/usb/Voices/SpongeBob", known));
+                // ~/.config/user-dirs.dirs
+                var dirs = VoiceLibrary.ParseXdgUserDirs(new[]
+                {
+                    "# This file is written by xdg-user-dirs-update",
+                    "XDG_DESKTOP_DIR=\"$HOME/Bureau\"",
+                    "XDG_DOWNLOAD_DIR=\"$HOME/Téléchargements\"",
+                    "XDG_MUSIC_DIR=\"$HOME\"",
+                    "XDG_VIDEOS_DIR=\"/srv/videos/\"",
+                    "NOT_A_DIR=\"$HOME/x\"",
+                }, "/home/u").ToArray();
+                Assert.Equal(new[] { "/home/u/Bureau", "/home/u/Téléchargements", "/home/u", "/srv/videos" }, dirs);
+            }
             // a file already in the library is reported as added, not copied onto itself
             (ok, message) = VoiceLibrary.Import(Path.Combine(VoiceLibrary.Dir, "Gollum.onnx"), out added);
             Assert.True(ok);

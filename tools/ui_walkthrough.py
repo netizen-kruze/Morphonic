@@ -433,10 +433,14 @@ def phase_voices(app, testvoices, python):
 
     p.eval("window.__toasts.length = 0")
     p.eval("importFiles([new File([new Uint8Array(3 * 1024 * 1024)], 'Dropped.onnx')]); true")
-    t = app.wait_toast("Dropped.onnx added", 60)
-    result(bool(t), "a dropped file streams into the library", t or str(app.toasts()[-2:]))
+    # 1.0.2: an export that arrives (drop, dialog, Find voices) is made the
+    # active voice at once and says so, instead of only "added".
+    t = app.wait_toast("Dropped is in your library", 60)
+    result(bool(t), "a dropped file streams into the library", t or str(app.toasts()))
     time.sleep(1)
     result(os.path.getsize(os.path.join(voices_dir(app.data), "Dropped.onnx")) == 3 * 1024 * 1024 if os.path.exists(os.path.join(voices_dir(app.data), "Dropped.onnx")) else False, "the dropped file arrived complete (3 MB)")
+    chosen = json.load(open(os.path.join(app.data, "settings.json"), encoding="utf-8")).get("VoiceId", "")
+    result(chosen == "Dropped.onnx", "the dropped voice becomes the active voice", "VoiceId=%s" % chosen)
     result(p.eval("!!document.querySelector('[data-delv=\"Dropped.onnx\"]')"), "the dropped voice is listed")
     p.click('[data-delv="Dropped.onnx"]')
     time.sleep(1)
