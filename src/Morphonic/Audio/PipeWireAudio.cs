@@ -19,9 +19,30 @@ internal static class PipeWireAudio
     public sealed record Command(string Label, string File, string[] Args);
 
     // pw-record / pw-play: "--raw" (raw samples on the pipe) exists from
-    // PipeWire 1.2; 1.0 (Ubuntu 24.04 LTS, Debian 12 backports) rejects the
-    // option and exits at once — there a pipe is raw anyway, so the same
-    // tool is tried again without it before falling back to PulseAudio's.
+    // PipeWire 1.2 and is needed there; 1.0 (Ubuntu 24.04 LTS, Debian 12)
+    // rejects the option, and a pipe is raw there anyway. Which of the two
+    // this machine's tools are is read from their own --help, once. Trying
+    // the other form "to see" is not safe: without --raw a 1.2+ pw-play
+    // takes its input for a sound file, sits waiting for a header, is taken
+    // for started, and ends the session as soon as audio reaches it.
+    private static readonly Lazy<bool?> RawOptionOnce = new(() =>
+        RawOptionFromHelp(LinuxHost.Capture("pw-record", new[] { "--help" }, 3000)));
+
+    // true: the tools take --raw (PipeWire 1.2+); false: they do not (1.0);
+    // null: no answer (not installed) — the newer form is assumed then,
+    // which an older tool refuses at once.
+    public static bool? RawOption => RawOptionOnce.Value;
+
+    internal static bool? RawOptionFromHelp(string? help)
+    {
+        if (string.IsNullOrWhiteSpace(help)) return null;
+        if (help.Contains("--raw", StringComparison.Ordinal)) return true;
+        return help.Contains("--rate", StringComparison.Ordinal) ? false : null;
+    }
+
+    public static string RawOptionLabel(bool? rawOption) =>
+        rawOption == true ? "take --raw (PipeWire 1.2 or newer)" : rawOption == false ? "do not take --raw (PipeWire before 1.2)" : "gave no answer";
+
     // A stream aimed at a chosen device must end when that device goes:
     // WirePlumber otherwise re-links it to the default device without a
     // word, and a voice meant for the virtual microphone would play out of
@@ -38,41 +59,52 @@ internal static class PipeWireAudio
         args.Add(DontReconnect);
     }
 
-    public static IEnumerable<Command> CaptureCommands(string? target)
+    // One PipeWire command: with --raw unless the tool is known not to take it.
+    private static Command Pw(string tool, int rate, bool? rawOption, string? target)
     {
-        foreach (var raw in new[] { true, false })
-        {
-            var pw = new List<string> { "--rate=16000", "--channels=1", "--format=s16" };
-            if (raw) pw.Add("--raw");
-            pw.Add("--latency=20ms");
-            AddTarget(pw, target);
-            pw.Add("-");
-            yield return new Command(raw ? "pw-record" : "pw-record (PipeWire 1.0, no --raw)", "pw-record", pw.ToArray());
-        }
+        bool raw = rawOption != false;
+        var args = new List<string> { $"--rate={rate}", "--channels=1", "--format=s16" };
+        if (raw) args.Add("--raw");
+        args.Add("--latency=20ms");
+        AddTarget(args, target);
+        args.Add("-");
+        return new Command(raw ? tool : tool + " (PipeWire 1.0, no --raw)", tool, args.ToArray());
+    }
 
-        var pa = new List<string> { "--rate=16000", "--channels=1", "--format=s16le", "--raw", "--latency-msec=20" };
-        if (target != null) pa.Add("--device=" + target);
-        yield return new Command("parec", "parec", pa.ToArray());
+    private static Command Pulse(string tool, int rate, string? target)
+    {
+        var args = new List<string> { $"--rate={rate}", "--channels=1", "--format=s16le", "--raw", "--latency-msec=20" };
+        if (target != null) args.Add("--device=" + target);
+        return new Command(tool, tool, args.ToArray());
+    }
 
+    // The tools in the order they are tried. PipeWire's go first where
+    // PipeWire carries the audio devices. pulseFirst: the device list came
+    // from PulseAudio (pactl) and PipeWire listed none — PulseAudio is the
+    // sound server there (a PipeWire daemon may still run beside it for
+    // screen sharing, with nothing to play into), so its tools lead and
+    // PipeWire's are only the fallback.
+    public static IEnumerable<Command> CaptureCommands(string? target) =>
+        CaptureCommands(target, RawOption, AudioDevices.ListedByPulseOnly(inputs: true));
+
+    public static IEnumerable<Command> CaptureCommands(string? target, bool? rawOption, bool pulseFirst)
+    {
+        var pw = Pw("pw-record", 16000, rawOption, target);
+        var pa = Pulse("parec", 16000, target);
+        yield return pulseFirst ? pa : pw;
+        yield return pulseFirst ? pw : pa;
         yield return new Command("arecord", "arecord", new[] { "-q", "-f", "S16_LE", "-r", "16000", "-c", "1", "-t", "raw", "-" });
     }
 
-    public static IEnumerable<Command> PlaybackCommands(string? target, int rate)
+    public static IEnumerable<Command> PlaybackCommands(string? target, int rate) =>
+        PlaybackCommands(target, rate, RawOption, AudioDevices.ListedByPulseOnly(inputs: false));
+
+    public static IEnumerable<Command> PlaybackCommands(string? target, int rate, bool? rawOption, bool pulseFirst)
     {
-        foreach (var raw in new[] { true, false })
-        {
-            var pw = new List<string> { $"--rate={rate}", "--channels=1", "--format=s16" };
-            if (raw) pw.Add("--raw");
-            pw.Add("--latency=20ms");
-            AddTarget(pw, target);
-            pw.Add("-");
-            yield return new Command(raw ? "pw-play" : "pw-play (PipeWire 1.0, no --raw)", "pw-play", pw.ToArray());
-        }
-
-        var pa = new List<string> { $"--rate={rate}", "--channels=1", "--format=s16le", "--raw", "--latency-msec=20" };
-        if (target != null) pa.Add("--device=" + target);
-        yield return new Command("pacat", "pacat", pa.ToArray());
-
+        var pw = Pw("pw-play", rate, rawOption, target);
+        var pa = Pulse("pacat", rate, target);
+        yield return pulseFirst ? pa : pw;
+        yield return pulseFirst ? pw : pa;
         yield return new Command("aplay", "aplay", new[] { "-q", "-f", "S16_LE", "-r", rate.ToString(), "-c", "1", "-t", "raw", "-" });
     }
 

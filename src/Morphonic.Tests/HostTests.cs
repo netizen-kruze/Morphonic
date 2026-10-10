@@ -322,25 +322,60 @@ public class AudioDeviceTests
     [Fact]
     public void RecorderAndPlayerCommandsCarryTargetAndFormat()
     {
-        // pw-record twice: with --raw (PipeWire 1.2+), then without (1.0, where a pipe is raw anyway)
-        var rec = PipeWireAudio.CaptureCommands("alsa_input.usb-mic").ToList();
-        Assert.Equal(new[] { "pw-record", "pw-record (PipeWire 1.0, no --raw)", "parec", "arecord" }, rec.Select(c => c.Label));
-        Assert.All(rec.Take(2), c => Assert.Equal("pw-record", c.File));
+        // PipeWire 1.2+ (the tools take --raw): one pw-record, with it
+        var rec = PipeWireAudio.CaptureCommands("alsa_input.usb-mic", rawOption: true, pulseFirst: false).ToList();
+        Assert.Equal(new[] { "pw-record", "parec", "arecord" }, rec.Select(c => c.Label));
+        Assert.Equal("pw-record", rec[0].File);
         Assert.Contains("--raw", rec[0].Args);
-        Assert.DoesNotContain("--raw", rec[1].Args);
         Assert.Contains("--target=alsa_input.usb-mic", rec[0].Args);
-        Assert.Contains("--target=alsa_input.usb-mic", rec[1].Args);
         Assert.Contains("--rate=16000", rec[0].Args);
-        Assert.Equal("-", rec[1].Args[^1]);
+        Assert.Equal("-", rec[0].Args[^1]);
+        Assert.Contains("--device=alsa_input.usb-mic", rec[1].Args);
         // a chosen device must not be silently swapped for the default when it vanishes
         Assert.Equal(new[] { "-P", PipeWireAudio.DontReconnect }, rec[0].Args.SkipWhile(a => a != "-P").Take(2));
-        Assert.DoesNotContain("-P", PipeWireAudio.CaptureCommands(null).First().Args);
-        var play = PipeWireAudio.PlaybackCommands("morphonic_voice", 40000).ToList();
-        Assert.Equal(new[] { "pw-play", "pw-play (PipeWire 1.0, no --raw)", "pacat", "aplay" }, play.Select(c => c.Label));
+        Assert.DoesNotContain("-P", PipeWireAudio.CaptureCommands(null, true, false).First().Args);
+        // PipeWire 1.0 (no such option, a pipe is raw anyway): the same tool without it — never both
+        // forms on one machine: a 1.2+ pw-play without --raw waits for a sound file instead of failing
+        var old = PipeWireAudio.CaptureCommands("alsa_input.usb-mic", rawOption: false, pulseFirst: false).ToList();
+        Assert.Equal(new[] { "pw-record (PipeWire 1.0, no --raw)", "parec", "arecord" }, old.Select(c => c.Label));
+        Assert.Equal("pw-record", old[0].File);
+        Assert.DoesNotContain("--raw", old[0].Args);
+        Assert.Contains("--target=alsa_input.usb-mic", old[0].Args);
+        Assert.Equal("-", old[0].Args[^1]);
+        // no answer from the tool (not installed): the newer form, which an older tool refuses at once
+        Assert.Contains("--raw", PipeWireAudio.CaptureCommands(null, null, false).First().Args);
+
+        var play = PipeWireAudio.PlaybackCommands("morphonic_voice", 40000, rawOption: true, pulseFirst: false).ToList();
+        Assert.Equal(new[] { "pw-play", "pacat", "aplay" }, play.Select(c => c.Label));
         Assert.Contains("--rate=40000", play[0].Args);
+        Assert.Contains("--raw", play[0].Args);
         Assert.Contains("--target=morphonic_voice", play[0].Args);
-        Assert.DoesNotContain("--raw", play[1].Args);
-        Assert.DoesNotContain(PipeWireAudio.PlaybackCommands(null, 48000).First().Args, a => a.StartsWith("--target", StringComparison.Ordinal));
+        var oldPlay = PipeWireAudio.PlaybackCommands("morphonic_voice", 40000, rawOption: false, pulseFirst: false).ToList();
+        Assert.Equal(new[] { "pw-play (PipeWire 1.0, no --raw)", "pacat", "aplay" }, oldPlay.Select(c => c.Label));
+        Assert.DoesNotContain("--raw", oldPlay[0].Args);
+        Assert.DoesNotContain(PipeWireAudio.PlaybackCommands(null, 48000, true, false).First().Args, a => a.StartsWith("--target", StringComparison.Ordinal));
+
+        // PulseAudio lists the devices and PipeWire none (PulseAudio is the sound server): its tools lead
+        Assert.Equal(new[] { "parec", "pw-record", "arecord" }, PipeWireAudio.CaptureCommands(null, true, pulseFirst: true).Select(c => c.Label));
+        var pulsePlay = PipeWireAudio.PlaybackCommands("morphonic_voice", 40000, true, pulseFirst: true).ToList();
+        Assert.Equal(new[] { "pacat", "pw-play", "aplay" }, pulsePlay.Select(c => c.Label));
+        Assert.Contains("--device=morphonic_voice", pulsePlay[0].Args);
+        Assert.Contains("--rate=40000", pulsePlay[0].Args);
+    }
+
+    [Fact]
+    public void TheRawOptionIsReadFromTheToolsOwnHelp()
+    {
+        // pw-record --help on PipeWire 1.6 names the option; on 1.0 it does not
+        const string newer = "pw-record [options] [<file>|-]\n  -h, --help   Show this help\n      --rate   Sample rate (req. for rec) (default 48000)\n  -a, --raw   RAW mode\n";
+        const string older = "pw-record [options] [<file>|-]\n  -h, --help   Show this help\n      --rate   Sample rate (req. for rec) (default 48000)\n      --format   Sample format\n";
+        Assert.True(PipeWireAudio.RawOptionFromHelp(newer));
+        Assert.False(PipeWireAudio.RawOptionFromHelp(older));
+        Assert.Null(PipeWireAudio.RawOptionFromHelp(""));           // the tool is not installed
+        Assert.Null(PipeWireAudio.RawOptionFromHelp(null));
+        Assert.Null(PipeWireAudio.RawOptionFromHelp("bash: pw-record: command not found"));
+        Assert.Contains("1.2", PipeWireAudio.RawOptionLabel(true));
+        Assert.Contains("before 1.2", PipeWireAudio.RawOptionLabel(false));
     }
 
     [Fact]

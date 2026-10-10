@@ -290,7 +290,9 @@ PyTorch — that is Python's own download, outside Morphonic.
 - **Which audio tools ran** (Linux): the `voice started:` line in
   `last_boot.log` names them — `pw-record` / `pw-play` on PipeWire (on
   PipeWire 1.0, as in Ubuntu 24.04, without the `--raw` flag newer versions
-  take), or `parec` / `pacat` on a PulseAudio-only desktop.
+  take), or `parec` / `pacat` where PulseAudio is the sound server (it lists
+  the devices and PipeWire lists none — WSL's desktop session, for one).
+  A support report (`--report`) says which were tried first, and why.
 - **Morphonic crashed or vanished**: the next start notices (a
   `boot.inprogress` marker survived), copies the OS crash record into
   `error.log`, and does a safe boot.

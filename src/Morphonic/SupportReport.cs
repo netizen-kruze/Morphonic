@@ -49,6 +49,10 @@ public static class SupportReport
             sb.AppendLine("ui libraries: " + (missing.Length == 0 ? "all present" : string.Join(", ", missing)));
             foreach (var tool in new[] { "pw-record", "pw-play", "pactl", "parec", "pacat", "xdg-open", "notify-send" })
                 sb.AppendLine($"  {tool,-12} {Which(tool) ?? "not found"}");
+            // What decides the audio tools a session runs on (PipeWireAudio).
+            sb.AppendLine("  pw-record / pw-play " + Safe(() => PipeWireAudio.RawOptionLabel(PipeWireAudio.RawOption)));
+            sb.AppendLine("  tried first: microphone " + Safe(() => AudioDevices.ListedByPulseOnly(true) ? "parec (PulseAudio lists the devices, PipeWire none)" : "pw-record") +
+                          "; output " + Safe(() => AudioDevices.ListedByPulseOnly(false) ? "pacat (PulseAudio lists the devices, PipeWire none)" : "pw-play"));
         }
         sb.AppendLine();
         sb.AppendLine("data folder:");

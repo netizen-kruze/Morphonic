@@ -104,9 +104,34 @@ public static class AudioDevices
         if (dump.Length > 0)
         {
             var fromPipeWire = ParsePwDump(dump, inputs);
-            if (fromPipeWire.Count > 0) return fromPipeWire;
+            if (fromPipeWire.Count > 0)
+            {
+                SetPulseOnly(inputs, false);
+                return fromPipeWire;
+            }
         }
-        return ParsePactlShort(LinuxHost.Capture("pactl", new[] { "list", "short", inputs ? "sources" : "sinks" }, 5000), inputs);
+        var fromPulse = ParsePactlShort(LinuxHost.Capture("pactl", new[] { "list", "short", inputs ? "sources" : "sinks" }, 5000), inputs);
+        SetPulseOnly(inputs, fromPulse.Count > 0);
+        return fromPulse;
+    }
+
+    // Linux: true when, at the last listing of that direction, PipeWire
+    // listed no device and PulseAudio (pactl) did. PulseAudio is the sound
+    // server on such a machine, whatever else runs beside it, and the
+    // session's tools follow that (PipeWireAudio). False until a listing
+    // says so; called under Gate (from Cached).
+    private static bool _pulseOnlyInputs, _pulseOnlyOutputs;
+
+    private static void SetPulseOnly(bool inputs, bool value)
+    {
+        if (inputs) _pulseOnlyInputs = value; else _pulseOnlyOutputs = value;
+    }
+
+    public static bool ListedByPulseOnly(bool inputs)
+    {
+        if (!OperatingSystem.IsLinux()) return false;
+        _ = inputs ? Inputs() : Outputs();   // a listing no older than the cache
+        lock (Gate) return inputs ? _pulseOnlyInputs : _pulseOnlyOutputs;
     }
 
     // pw-dump: one JSON array of every PipeWire object. Capture devices are
