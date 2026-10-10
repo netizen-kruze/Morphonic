@@ -644,14 +644,61 @@ local ones; the two plain files downloaded anonymously match
 "Version 1.0.2 is available … Download Morphonic-1.0.2-win-x64.zip (38
 MB)"; the published 1.0.2 exe says "You have the latest version (1.0.2)."
 
+## Ubuntu 24.04, real PipeWire 1.0 — the published binary
+
+Run after the release, on the one path the release pass had only imitated:
+the tools of PipeWire before 1.2. Ubuntu 24.04.5 LTS in WSL 2 (kernel 6.18,
+16 threads), PipeWire 1.0.5, WirePlumber 0.4.17, pipewire-pulse 1.0.5,
+WebKitGTK 2.52.6, GTK 3.24.41. The binary is the published one:
+`Morphonic-1.0.2-linux-x64` downloaded from the release page inside
+Ubuntu, 48,004,260 bytes, matching the release's `SHA256SUMS.txt`
+(`71e636b8…`). `--fetch-models` downloaded and assembled the three model
+files there, all matching their pinned hashes.
+
+What the real tools answer, which is what the choice of command line rests
+on: `pw-record --help` exits 0 with its text on stdout, lists `--rate` and
+does not list `--raw`; `pw-record --raw` and `pw-play --raw` exit 1 with
+"unrecognized option '--raw'". So the app reads "do not take `--raw`
+(PipeWire before 1.2)" and never tries the flag.
+
+**Scenarios** (the harness's own PipeWire 1.0.5 graph under Xvfb, as the
+normal user): all 29 pass, 248 checks; s29 skips itself, as it should on
+tools that are themselves older than 1.2. No change was needed to the app
+or to a script.
+
+- Every session ran on `in: pw-record (PipeWire 1.0, no --raw) …; out:
+  pw-play (PipeWire 1.0, no --raw) …`, the virtual microphone's sink and
+  the sidetone included (s04). Only s23, which takes PipeWire away, ran on
+  `parec` / `pacat`.
+- `--report` (s10): "pw-record / pw-play do not take --raw (PipeWire before
+  1.2)" and "tried first: microphone pw-record; output pw-play".
+- A chosen device removed mid-session (s18): "target not found", capture
+  failed, then playback failed, the app kept running. This is the
+  `node.dont-reconnect` behaviour under WirePlumber 0.4.
+- Real speech into the virtual microphone (s21): 40.0 s recorded at 40 kHz,
+  968 voiced frames, median 96 Hz against the clip's 92 Hz. `--convert` at
+  +12 semitones (s11): ratio 1.93. The 150 s session (s19): 294 passes,
+  0 ms skipped, 15 underruns, one sidetone catch-up, 1474 MB RSS.
+  `--bench` (s12): 128 ms per 500 ms block on the CPU (load 0.26).
+- s26 kept up at 160 ms blocks here (peak load 0.83), so no advice was
+  given; s27's read-only folder ran as a normal user.
+
+**Ubuntu's plain WSLg session.** WSLg's PulseAudio is the sound server and
+the user's systemd session socket-activates a PipeWire 1.0.5 daemon with
+only its dummy drivers. By hand, `pw-play` and `pw-record` exit there at
+once with "no target node available", while `pacat` and `parec` run. The
+app lists the devices through pactl and runs `in: parec; out: pacat →
+morphonic_voice; sidetone: pacat` on X11 and on Wayland, to the end, with
+an empty error.log and nothing left behind; `--report` says "tried first:
+microphone parec (PulseAudio lists the devices, PipeWire none)". The same
+start-of-session backlog skip as on Fedora (2 to 3 s, WSLg's microphone
+bridge).
+
 ## Still not covered
 
-- A real PipeWire 1.0 machine with the release binary. The command line it
-  runs there is the one that passed on Ubuntu 24.04 during the audit; what
-  changed since is how it is chosen (from `--help`), and that ran against
-  an imitation of the older tools (s29), not the tools themselves.
-- Fedora on real hardware: a real microphone, GNOME or KDE, PipeWire
-  devices that are not null sinks.
+- Linux on real hardware: a real microphone, GNOME or KDE, PipeWire
+  devices that are not null sinks. Fedora and Ubuntu were both run in
+  WSL 2.
 - Clicks the drivers cannot make: the Linux window's close button, Exit in
   the Windows tray (the same `BeginShutdown` ran through SIGTERM and
   `--run-seconds`), the `.zip` filter of the import dialog.
