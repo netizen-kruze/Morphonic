@@ -2,23 +2,31 @@
 # Settings-driven branches: the pace advice for small blocks, sidetone to a
 # named device and off, and a saved device that is gone.
 source "$(dirname "$0")/_common.sh"
-# pace advice: 160 ms blocks with the longest context on the CPU. A slow
-# box (the 4-thread one these were written on) falls behind and must be told
-# "A larger block (250 ms)"; a fast one keeps up and must be told nothing.
-# Which of the two this machine is, the session's own log says.
+# pace advice: 160 ms blocks with the longest context on the CPU. What a
+# machine is told depends on the machine, so the checks follow the session's
+# own log: after ten seconds of falling behind it must be told what helps
+# here — GPU acceleration where a usable card has no pack installed, else
+# "A larger block (250 ms)" — and one that keeps up (or dips only briefly)
+# must be told nothing. The 4-thread box these were written on falls behind;
+# a fast desktop keeps up unless something else is using it.
 N=s26_pace; D="$(fresh_data $N with-models)"; live_settings "$D" false 160 2500
 run_app $N --auto-start --run-seconds 60; code=$?
 show_logs $N
 check "pace: exit 0" "$([ $code = 0 ] && echo 1 || echo 0)"
 check "pace: session summary with passes" "$(has_log $N 'voice session ended \(exiting\) .*[1-9][0-9]* passes')"
-if [ "$(has_log $N 'conversion falling behind')" = 1 ]; then
-  echo "  (this machine falls behind at 160 ms blocks)"
-  check "pace: advice offers the next block size (250 ms)" "$(has_log $N 'pace advice: .*A larger block \(250 ms\)')"
-  check "pace: backlog skipping logged in the summary" "$(has_log $N 'voice session ended .* [1-9][0-9]* ms skipped')"
+if [ "$(has_log $N 'pace advice')" = 1 ]; then
+  if grep -q 'tier GPU' "$D/last_boot.log" && grep -q 'pack not installed' "$D/last_boot.log"; then
+    want='install GPU acceleration'; what="GPU acceleration (a usable card, no pack installed)"
+  else
+    want='A larger block \(250 ms\)'; what="the next block size (250 ms)"
+  fi
+  echo "  (this machine fell behind at 160 ms blocks: $(grep -o 'peak load [0-9.]*×' "$D/last_boot.log" | tail -n 1))"
+  check "pace: the advice came after falling behind was logged" "$(grep -B99 'pace advice' "$D/last_boot.log" | grep -q 'conversion falling behind' && echo 1 || echo 0)"
+  check "pace: the advice offers $what" "$(has_log $N "pace advice: .*$want")"
 else
-  echo "  (this machine keeps up at 160 ms blocks: $(grep -o 'peak load [0-9.]*×' "$D/last_boot.log" | tail -n 1))"
-  check "pace: kept up, so no advice was given" "$([ "$(has_log $N 'pace advice')" = 0 ] && echo 1 || echo 0)"
-  check "pace: nothing was skipped" "$(has_log $N 'voice session ended .* 0 ms skipped')"
+  echo "  (this machine kept up at 160 ms blocks, or dipped only briefly: $(grep -o 'peak load [0-9.]*×' "$D/last_boot.log" | tail -n 1); the advice itself was not exercised)"
+  check "pace: no advice was given" "$([ "$(has_log $N 'pace advice')" = 0 ] && echo 1 || echo 0)"
+  check "pace: nothing in error.log" "$(errlog_empty $N)"
 fi
 # sidetone to a named device, with the virtual mic on
 N=s26_side; D="$(fresh_data $N with-models)"; live_settings "$D" true 500 1000

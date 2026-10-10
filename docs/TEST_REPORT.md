@@ -519,3 +519,143 @@ SIGTERM (s06), which calls the same `BeginShutdown` as the window's close
 handler; that one-line handler itself needs a window manager to trigger.
 Left: the close handler, s27's read-only data folder as a normal user,
 and everything under "Not covered" above.
+
+# 1.0.2 checked on both targets and released — Windows 11 and Fedora 44, 2026-10-10
+
+The 1.0.2 work above reached `main` as pull requests #1 and #2. Before the
+release it was checked on the two platforms this project is for, neither
+of which the audit box could run: Windows 11 (the machine of the 1.0.0
+report) and Fedora 44 (WSL 2, kernel 6.18, 16 threads, RTX 5080 visible).
+Release files: `.\build.ps1 -Offline` from a clean tree at commit
+`5e3c220`, the commit the tag `v1.0.2` points at.
+
+## Found in this pass, fixed before the release
+
+1. **Playback broke where PulseAudio is the sound server and PipeWire's
+   newer tools are installed** — the plain WSLg session of the Fedora test
+   system, where a socket-activated PipeWire daemon runs beside WSLg's
+   PulseAudio with no audio devices. 1.0.2 retried `pw-play` without
+   `--raw` after any early failure of the first attempt. On PipeWire 1.2+
+   that form takes its input for a sound file, waits for a header, is taken
+   for started, and ends the session as soon as audio reaches it ("sndfile:
+   failed to open audio file"); the virtual microphone and the sidetone
+   went the same way. 1.0.1 fell through to `pacat` and worked. Now the
+   tools' own `--help` says which form they take, once, and only that form
+   is ever run; and where PulseAudio lists the devices and PipeWire lists
+   none, `parec` / `pacat` are tried first. `--report` states both facts.
+   The fault never shipped: 1.0.2 had not been published.
+2. **A new unit test failed on Windows.** It compared POSIX paths in full,
+   which `Path.GetFullPath` roots on the current drive there. The app code
+   was right; the test uses each platform's own paths now.
+3. **`--uninstall --purge` deleted by the binary's file name**:
+   `~/.local/share/<name>` and `~/.cache/<name>` for whatever the running
+   binary was called, so a binary renamed to another program's folder name
+   would have taken that folder. Only `Morphonic` and names that still
+   begin with it are purged (`LinuxInstaller.PurgeNames`, unit test).
+4. **Windows: Exit from the tray during a voice load** did not abandon the
+   start as the Linux close does; it calls `BeginShutdown` now.
+5. Test drivers. The walkthrough waited for the old "added" message after
+   a drop; a dropped export is made the active voice in 1.0.2 (91 checks
+   now, one more for the choice). In the Linux scenarios: s20 lacked the
+   copy fallback; s26's pace checks assumed a slow machine without a
+   graphics card (a fast one keeps up at 160 ms blocks, and one with a
+   usable card is rightly told to install GPU acceleration); s23 gained the
+   case of item 1 (the real tools with `PIPEWIRE_REMOTE` pointing nowhere);
+   s29 is new and imitates PipeWire 1.0 on a newer one. The first full run
+   also filled Fedora's RAM-backed `/tmp` (16 GB): with the models on
+   another file system every run folder gets a full copy, and from s22 on
+   nothing could start. `scenario.sh` says to keep both on one file system.
+
+## Windows 11
+
+| Layer | What | Result |
+|---|---|---|
+| Unit tests | `dotnet test` with `MORPHONIC_TEST_MODELS` and `MORPHONIC_TEST_SOURCES` (ONNX stages against the reference, assembly reproduces the pinned hashes) | 66 / 66 |
+| UI walkthrough | `tools/ui_walkthrough.py --phase all` on the release exe | 91 / 91 |
+| Offline exe | first-run phase: "included in this build — no download", set-up in 1 s | 20 / 20 |
+| Update check | fake feed (1.0.3 announced with the Windows file, equal release, dead feed, nothing requested before the press) and the live feed | 15 / 15 |
+| New in 1.0.2 | Cancel on a running Hub download (button read Cancel 11 ms after the click on a 362 MB file; nothing left behind); Start refused during the speed check and the speed check refused during a voice; an output picked while running restarts once, picked while stopped starts nothing, a pick followed at once by Start starts once; a dropped zip's voice is adopted under the zip's name; an exit landing inside the voice load logs "start abandoned: the app is closing", exit 0 | 33 / 33 |
+| Find voices | a real Hugging Face download, named after its repository, converted in-app, adopted, started | 11 / 11 |
+| Voices tabs, sidetone, report button | as in the 1.0.1 section | 9 / 9, 9 / 9, pass |
+| Release archives | the exe inside each zip is byte-identical to the tested exe; `SHA256SUMS.txt` matches the four files | pass |
+
+The last three rows before the archives ran on a build of the same
+Windows-side source made before the final two commits (which changed
+tests, tools and Linux-only code); the first four and the archives are the
+release files themselves. VRCNext was running throughout and its browser
+processes were left alone (same pids before and after the driver's
+clean-up).
+
+## Fedora 44
+
+PipeWire 1.6.9, WirePlumber 0.5.18, pipewire-pulse 1.6.9, WebKitGTK 2.54.1,
+GTK 3.24.52. This is the `--raw` path of `pw-record` / `pw-play`, which
+Ubuntu 24.04's PipeWire 1.0 cannot reach. Hugging Face is reachable here,
+so `--fetch-models` did the real thing on Linux for the first time in this
+report: three downloads, in-app assembly, all three files matching their
+pinned hashes.
+
+**Unit tests** from a fresh clone of the public repository at `5e3c220`
+(.NET SDK 9.0.121): 66 / 66 with the models and the assembly sources.
+
+**Scenarios** (`tools/linux-scenarios`, the harness's own PipeWire graph
+under Xvfb, one after another, on the release binary): all 29 pass, 259
+checks. s26 passed on a second go after its expectation was corrected
+(item 5); nothing else needed one.
+
+| # | Checks | Worth noting on this machine |
+|---|---|---|
+| s01, s02 | 10, 15 | `in: pw-record (default input); out: pw-play (default output)`, with `--raw` |
+| s03 – s10 | 8, 12, 10, 16, 6, 9, 13, 8 | s09's purge runs under the release file's own name |
+| s11 | 7 | +12 semitones: ratio 1.93; pitch 0 against the clip: 1.03 |
+| s12 | 6 | CPU: 134 ms per 500 ms block (load 0.27) |
+| s13 | 12 | offline pack, unpack with no network, repack, smoke |
+| s14 | 4 | run with a proxy that refuses, since Hugging Face answers here |
+| s15 – s17 | 7, 4, 8 | |
+| s18 | 8 | "target not found": capture failed, then playback failed, app kept running |
+| s19 | 6 | 150 s: 294 passes, 0 ms skipped, 10 underruns with the desktop in use, one sidetone catch-up, 1407 MB RSS |
+| s20 | 5 | |
+| s21 | 7 | 39.7 s recorded from the virtual microphone, 949 voiced frames, median 97 Hz against the clip's 92 Hz |
+| s22 | 13 | |
+| s23 | 13 | new half: real tools, no PipeWire daemon in reach, virtual microphone and sidetone on — `in: parec; out: pacat → morphonic_voice; sidetone: pacat`, to the end |
+| s24 | 4 | |
+| s25 | 6 | a usable NVIDIA card and a garbage pack: "bundled CUDA 12 runtime failed to load", the voice on the CPU |
+| s26 | 11 | idle: keeps up at 160 ms blocks (peak load 0.83), no advice; under load from the desktop: falls behind and is told to install GPU acceleration |
+| s27 | 8 | the read-only folder ran as a normal user: exit 1, "couldn't unpack its interface files" |
+| s28 | 12 | |
+| s29 | 11 | new: tools that refuse `--raw` and do not list it — the session runs on `pw-record` / `pw-play (PipeWire 1.0, no --raw)` and `--raw` is never tried |
+
+**The plain WSLg session** (PulseAudio server, the case of item 1), release
+files: window on X11 and on WSLg's Wayland compositor, `in: parec; out:
+pacat → morphonic_voice; sidetone: pacat`, sessions to the end, empty
+error.log, no sink, lock or record left; `--report` names the tools tried
+first. The released offline file unpacked its three models with the
+network refused, verified them and ran a session. One observation: most
+short sessions here skip about 3 s of backlog right at the start. The
+published 1.0.1 binary does the same under the same conditions, so it is
+WSLg's microphone bridge delivering a burst, not this release.
+
+## Release 1.0.2 published
+
+2026-10-10 06:45 UTC, https://github.com/netizen-kruze/Morphonic/releases/tag/v1.0.2,
+tag on `5e3c220`. GitHub's SHA-256 digests of the five files equal the
+local ones; the two plain files downloaded anonymously match
+`SHA256SUMS.txt`. The published 1.0.1 and 1.0.0 exes are each told
+"Version 1.0.2 is available … Download Morphonic-1.0.2-win-x64.zip (38
+MB)"; the published 1.0.2 exe says "You have the latest version (1.0.2)."
+
+## Still not covered
+
+- A real PipeWire 1.0 machine with the release binary. The command line it
+  runs there is the one that passed on Ubuntu 24.04 during the audit; what
+  changed since is how it is chosen (from `--help`), and that ran against
+  an imitation of the older tools (s29), not the tools themselves.
+- Fedora on real hardware: a real microphone, GNOME or KDE, PipeWire
+  devices that are not null sinks.
+- Clicks the drivers cannot make: the Linux window's close button, Exit in
+  the Windows tray (the same `BeginShutdown` ran through SIGTERM and
+  `--run-seconds`), the `.zip` filter of the import dialog.
+- The Python fallback converter end to end with PyTorch installed. That
+  `-I` hides the user site-packages and `-E` does not was confirmed with
+  the interpreter's own flags; no conversion was run through it.
+- Listening.
