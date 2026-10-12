@@ -175,7 +175,8 @@ Simulate a fresh machine: quit Morphonic, rename the data folder away
       the dnf hint instead of a crash; `tools/smoke.sh <binary>` passes.
 - [ ] Update simulation: replace the binary only → settings, voices,
       components and the GPU pack survive.
-- [ ] Settings → About → Check for updates: with the network on, the row
+- [ ] Settings → Check for updates is the first row of the screen, in view
+      without scrolling. With the network on, the row
       says either "You have the latest version" or names the newer version
       with the matching file for this platform, and "Open download page"
       opens the GitHub release in the browser; with the network off it says

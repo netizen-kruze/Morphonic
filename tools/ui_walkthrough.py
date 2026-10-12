@@ -53,28 +53,55 @@ class App:
         self.proc = None
         self.page = None
 
+    # Whose processes these are. A test's Morphonic is always started with
+    # --data-dir; the one somebody is using on this desktop was not, and its
+    # WebView2 profile is the default one under %APPDATA%\Morphonic. Only
+    # the tests' own processes are ever stopped — never an app a person has
+    # open (this clean-up once stopped every process named Morphonic).
+    #
     # WebView2 keeps its browser process a moment after a hard kill; a
-    # new window cannot share its profile until it is gone. Only
-    # Morphonic's own browser processes are touched: WebView2 tags them
-    # with "--webview-exe-name=Morphonic.exe" (the browser process) and the
-    # profile folder under the test's data folder (its children). Every
-    # other Photino app on the machine (VRCNext, Chatterbox…) also says
-    # "Photino" on its command line, so that word must never be the filter.
+    # new window cannot share its profile until it is gone. WebView2 tags
+    # Morphonic's with "--webview-exe-name=Morphonic.exe" (the browser
+    # process) and the profile folder under the test's data folder (its
+    # children). Every other Photino app on the machine (VRCNext,
+    # Chatterbox…) also says "Photino" on its command line, so that word
+    # must never be the filter.
     @staticmethod
     def kill_all(data=None):
+        default_profile = os.path.join(os.environ.get("APPDATA", "?"), "Morphonic", "webview")
         marks = ["--webview-exe-name=Morphonic.exe"]
         if data:
             marks.append(os.path.join(os.path.abspath(data), "webview"))
         cond = " -or ".join("$_.CommandLine.Contains('%s')" % m.replace("'", "''") for m in marks)
         subprocess.run(["powershell", "-NoProfile", "-Command",
-                        "Stop-Process -Name Morphonic -Force -ErrorAction SilentlyContinue; "
+                        "Get-CimInstance Win32_Process -Filter \"name='Morphonic.exe'\" | "
+                        "Where-Object { $_.CommandLine -ne $null -and $_.CommandLine.Contains('--data-dir') } | "
+                        "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; "
                         "Get-CimInstance Win32_Process -Filter \"name='msedgewebview2.exe'\" | "
-                        "Where-Object { $_.CommandLine -ne $null -and (" + cond + ") } | "
+                        "Where-Object { $_.CommandLine -ne $null -and (" + cond + ") -and "
+                        "$_.CommandLine.IndexOf('" + default_profile.replace("'", "''") + "', [StringComparison]::OrdinalIgnoreCase) -lt 0 } | "
                         "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"],
                        capture_output=True)
         time.sleep(1.5)
 
+    # Process ids of a Morphonic that is not a test's: somebody's own app.
+    # Windows runs one Morphonic at a time (a named mutex), so a test cannot
+    # start beside it — and must not make room by closing it.
+    @staticmethod
+    def foreign_instances():
+        r = subprocess.run(["powershell", "-NoProfile", "-Command",
+                            "Get-CimInstance Win32_Process -Filter \"name='Morphonic.exe'\" | "
+                            "Where-Object { $_.CommandLine -eq $null -or -not $_.CommandLine.Contains('--data-dir') } | "
+                            "ForEach-Object { $_.ProcessId }"], capture_output=True, text=True)
+        return [int(x) for x in r.stdout.split() if x.isdigit()]
+
+    FOREIGN = ("Morphonic is already open on this desktop (pid %s). Windows runs one copy at a time, and this test "
+               "does not close an app it did not start: close Morphonic (tray icon > Exit) and run the test again.")
+
     def launch(self, extra_args=(), connect=True, env_extra=None, exe=None):
+        others = self.foreign_instances()
+        if others:
+            raise RuntimeError(self.FOREIGN % ", ".join(map(str, others)))
         env = dict(os.environ)
         env.update(self.env_extra)
         env.update(env_extra or {})
@@ -586,6 +613,18 @@ def phase_settings(app, published_exe):
     app.launch()
     p = app.page
     app.view("settings")
+    # Check for updates is the first thing on the screen: the first row, the
+    # topmost button, in view without scrolling.
+    top = p.eval("""(function(){
+        var view = document.getElementById('view-settings');
+        var rows = Array.from(view.querySelectorAll('.setrow')).filter(function(r){ return r.offsetParent !== null; });
+        var buttons = Array.from(view.querySelectorAll('button')).filter(function(b){ return b.offsetParent !== null; });
+        buttons.sort(function(a, b){ return a.getBoundingClientRect().top - b.getBoundingClientRect().top; });
+        var r = document.getElementById('btnCheckUpdate').getBoundingClientRect();
+        return { firstRow: rows.length > 0 && !!rows[0].querySelector('#btnCheckUpdate'), topButton: buttons.length ? buttons[0].id : '',
+                 inView: r.top >= 0 && r.bottom <= window.innerHeight, top: Math.round(r.top) }; })()""")
+    result(top["firstRow"] and top["topButton"] == "btnCheckUpdate", "Check for updates is the first row and the topmost button of Settings", "top button: %s" % top["topButton"])
+    result(top["inView"], "Check for updates is in view without scrolling", "%d px from the top" % top["top"])
     p.click("#btnDefaults")
     time.sleep(1.5)
     t = app.wait_toast("recommended", 5) or app.wait_toast("default", 3)
@@ -637,6 +676,10 @@ def main():
     out = a.out or os.path.join(a.data, "..", "ui-results")
     os.makedirs(out, exist_ok=True)
     app = App(os.path.abspath(a.exe), os.path.abspath(a.data), os.path.abspath(out))
+    others = App.foreign_instances()
+    if others:
+        print(App.FOREIGN % ", ".join(map(str, others)))
+        sys.exit(2)
     App.kill_all()
     phases = ["first", "models", "voice", "voices", "lifecycle", "settings"] if a.phase == "all" else a.phase.split(",")
     try:

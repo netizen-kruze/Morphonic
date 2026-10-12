@@ -214,7 +214,7 @@ $('btnOpenVoices').addEventListener('click', () => send({ action: 'openVoicesFol
 $('btnOpenData').addEventListener('click', () => send({ action: 'openDataFolder' }));
 $('btnSaveReport').addEventListener('click', () => send({ action: 'saveReport' }));
 
-// ── update check (Settings > About) ────────────────────────────
+// ── update check (the first row of Settings) ───────────────────
 let updateUrl = '';
 $('btnCheckUpdate').addEventListener('click', () => send({ action: 'checkUpdate' }));
 $('btnGetUpdate').addEventListener('click', () => { if (updateUrl) send({ action: 'openUrl', url: updateUrl }); });

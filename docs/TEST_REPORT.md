@@ -706,3 +706,37 @@ bridge).
   `-I` hides the user site-packages and `-E` does not was confirmed with
   the interpreter's own flags; no conversion was run through it.
 - Listening.
+
+# After 1.0.2, for the next update (on `main`, not released) — 2026-10-11
+
+## Check for updates is the first row of Settings
+
+The Updates row (its text, **Check for updates**, and **Open download
+page** when a newer release exists) moved from the About section, fifteen
+rows down and out of view, to the top of the Settings screen. Nothing else
+about it changed; About keeps the version, the data folder, the report and
+the documents.
+
+| How | Result |
+|---|---|
+| The page's demo mode (`index.html?demo`) in a headless Edge at the app's window size: the row is the first of 18, its button the topmost and in view (131 px down); the three answers the app sends render in it (asking, a newer release with notes and both buttons, the latest version, a failed check); still in view at the minimum window size (760 × 540) | 11 / 11 |
+| The real window, a build of this tree with a dead `--update-feed`: first row, topmost button, in view; pressing it answers "Could not check" in the same row and the button comes back; About shows the version | 6 / 6 |
+| Unit tests | 66 / 66 |
+
+`tools/ui_walkthrough.py` checks the position from now on (two checks in
+the settings phase), so the next release pass covers it on the release
+file.
+
+## The test driver never closes a Morphonic it did not start
+
+Windows runs one Morphonic at a time (a named mutex), and the driver's
+clean-up stopped every process named Morphonic — it would have closed the
+app of whoever was using it, as it once did with VRCNext's browser
+processes. A test's Morphonic is always started with `--data-dir`; the
+clean-up now stops only those, leaves any WebView2 process under the
+default profile (`%APPDATA%\Morphonic\webview`) alone, and both `launch()`
+and the walkthrough refuse to run while somebody's own Morphonic is open,
+saying so and naming its pid. Checked with stand-in processes named
+Morphonic.exe (copies of cmd.exe), one started like a person's app and one
+like a test's: 7 / 7 — the first is reported and survives both clean-ups,
+the walkthrough exits 2 without touching either, the second is stopped.

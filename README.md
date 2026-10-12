@@ -230,12 +230,12 @@ New versions ship as a fresh download — replace the binary. Your settings,
 voices, components and the GPU pack live in `%APPDATA%\Morphonic\` (Windows) or
 `~/.local/share/Morphonic/` (Linux) and survive updates.
 
-**Settings → About → Check for updates** asks GitHub for the latest release
-when you press it (never on its own) and tells you whether a newer version
-exists and which file to fetch for your platform; **Open download page**
-takes you to the release in your browser. Every release carries a
-`SHA256SUMS.txt` so you can verify the download. Morphonic never downloads
-or replaces itself.
+**Settings → Check for updates**, the first row of the screen, asks GitHub
+for the latest release when you press it (never on its own) and tells you
+whether a newer version exists and which file to fetch for your platform;
+**Open download page** takes you to the release in your browser. Every
+release carries a `SHA256SUMS.txt` so you can verify the download. Morphonic
+never downloads or replaces itself.
 
 To fully uninstall: delete the app and that data folder. Windows also keeps
 one registry value under `HKEY_CURRENT_USER\Software\Morphonic` (records that

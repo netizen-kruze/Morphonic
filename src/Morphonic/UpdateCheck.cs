@@ -8,7 +8,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Morphonic;
 
-// Settings > About > "Check for updates": one request to GitHub's
+// Settings > "Check for updates" (the first row): one request to GitHub's
 // "latest release" endpoint for the project's repository, made only when
 // the user presses the button — never on a timer, never at start-up. The
 // answer is shown; fetching the new binary stays a download the user does
