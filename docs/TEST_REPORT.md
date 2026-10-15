@@ -815,3 +815,9 @@ build of the same code:
 The Windows window flow (button and restart) was not driven: the user's
 own Morphonic was open, and Windows runs one copy at a time. The restart
 is the one the GPU pack has used since 1.0.0.
+
+1.0.4 published 2026-10-15 02:43 UTC; tag `v1.0.4` on `6acdf23`, GitHub's
+SHA-256 digests of the five files equal the local ones. Against the live
+release: the 1.0.4 exe's `--update` says it is the latest; a build of the
+same code stamped 1.0.3 updated itself from GitHub with `--update`, and the
+exe it left in place is byte-identical to the released 1.0.4.
