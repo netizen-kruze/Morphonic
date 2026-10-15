@@ -625,6 +625,11 @@ def phase_settings(app, published_exe):
                  inView: r.top >= 0 && r.bottom <= window.innerHeight, top: Math.round(r.top) }; })()""")
     result(top["firstRow"] and top["topButton"] == "btnCheckUpdate", "Check for updates is the first row and the topmost button of Settings", "top button: %s" % top["topButton"])
     result(top["inView"], "Check for updates is in view without scrolling", "%d px from the top" % top["top"])
+    last = p.eval("""(function(){
+        var rows = Array.from(document.querySelectorAll('#view-settings .setrow')).filter(function(r){ return r.offsetParent !== null; });
+        var b = document.getElementById('btnSaveReport');
+        return { lastRow: rows.length > 0 && !!rows[rows.length - 1].querySelector('#btnSaveReport'), label: b ? b.textContent.trim() : '' }; })()""")
+    result(last["lastRow"] and last["label"] == "Get logs…", "Get logs… is the last row of Settings", last["label"])
     p.click("#btnDefaults")
     time.sleep(1.5)
     t = app.wait_toast("recommended", 5) or app.wait_toast("default", 3)

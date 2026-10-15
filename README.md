@@ -298,7 +298,7 @@ PyTorch — that is Python's own download, outside Morphonic.
   `error.log`, and does a safe boot.
 - Errors are logged to `error.log` in the data folder.
 
-Bug reports are welcome — **Settings → About → Save a report…** writes one
+Bug reports are welcome — **Settings → Get logs…** (the last row of the screen) writes one
 zip with `error.log`, `last_boot.log` (what the app saw at its last start,
 including the machine it ran on), `bench.log`, your settings and a
 description of the machine into the data folder; attach that. If the

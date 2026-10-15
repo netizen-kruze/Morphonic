@@ -9,7 +9,7 @@ namespace Morphonic;
 
 // One file to send when something is wrong: the logs, the settings, the
 // model manifest and a description of the machine, zipped into the data
-// folder. Settings → About → "Save a report…" and `Morphonic --report`
+// folder. Settings → "Get logs…" (the last row) and `Morphonic --report`
 // (the latter works even when the window cannot open). Nothing in it
 // leaves the machine unless the user sends it.
 public static class SupportReport
