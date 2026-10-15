@@ -768,3 +768,22 @@ voice already there.
 | Unit tests (two new: same-name imports by every route, one pattern per Linux filter) | 68 / 68 |
 
 Drag and drop onto the Linux window was not driven.
+
+# 1.0.3 released — 2026-10-15
+
+Carries the Linux Import voice fix and the unique names for imported voices
+above, Check for updates as the first row of Settings, and **Get logs…**
+(the report zip, formerly "Save a report…" under About) as the last row,
+under its own "Logs" heading. Release files built from `2451bc5`, the
+commit the tag `v1.0.3` points at; GitHub's SHA-256 digests of the five
+files equal the local ones.
+
+| Check on the release files | Result |
+|---|---|
+| Unit tests | 68 / 68 |
+| Windows walkthrough, including both button positions | 94 / 94 |
+| Windows offline exe, first run | 20 / 20 |
+| Update check, fake feed and live feed | 15 / 15 |
+| Fedora 44: a voice picked in the Import dialog (hidden display, xdotool), converted in-app | pass |
+| Fedora 44 scenarios s01–s04, s06, s09, s10, s13, s17, s23, s29 | 126 / 126 |
+| Live feed after publishing: 1.0.2 is offered 1.0.3 with the Windows file; 1.0.3 says it is the latest | 2 / 2 |
