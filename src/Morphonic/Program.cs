@@ -230,7 +230,7 @@ internal static class Program
             catch (Exception ex) { ErrorLog.WriteEntry("SignalHandlers", ex); }
         }
         ctrl.PickFiles = () => _window.ShowOpenFile("Choose an RVC voice (.pth, .onnx, or the .zip a voice library gave you)", null, true,
-            new[] { ("RVC voice", new[] { "*.pth", "*.onnx", "*.zip" }) });
+            VoiceFileFilters(OperatingSystem.IsLinux()));
         ctrl.RestartRequested += RestartApp;
         ctrl.ArmSafeBoot(unfinished != null);
         _autoStart = autoStart && unfinished == null;   // a safe boot never auto-starts
@@ -469,6 +469,22 @@ internal static class Program
         int i = Array.IndexOf(args, name);
         return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
     }
+
+    // The Import voice dialog's file types. Photino's GTK dialog (Linux)
+    // takes only the first pattern of a filter as given, so a filter of
+    // "*.pth;*.onnx;*.zip" matched no file at all and no voice could be
+    // picked there: on Linux every filter carries one pattern, and the
+    // first shows every file (the import itself refuses anything that is
+    // not a voice, with a message). Windows' dialog takes the list.
+    internal static (string Name, string[] Extensions)[] VoiceFileFilters(bool linux) => linux
+        ? new[]
+        {
+            ("All files (pick a .pth, .onnx or .zip voice)", new[] { "*" }),
+            ("RVC checkpoint (.pth)", new[] { "*.pth" }),
+            ("ONNX voice (.onnx)", new[] { "*.onnx" }),
+            ("Voice library zip (.zip)", new[] { "*.zip" }),
+        }
+        : new[] { ("RVC voice", new[] { "*.pth", "*.onnx", "*.zip" }) };
 
     private static PosixSignalRegistration? _sigterm, _sigint, _sighup;
     private static VoiceController? _controller;

@@ -213,17 +213,69 @@ public static class VoiceLibrary
             }
             var tmp = dest + ".importing";
             File.Copy(sourcePath, tmp, overwrite: true);
-            File.Move(tmp, dest, overwrite: true);
-            added = Path.GetFileName(dest);
-            return (true, ext == ".pth"
-                ? $"{Path.GetFileName(dest)} added — converting to an ONNX voice now"
-                : $"{Path.GetFileName(dest)} added");
+            var final = Land(tmp, Path.GetFileName(dest), out bool again);
+            added = final;
+            return (true, again ? $"{final} is already in your library"
+                : ext == ".pth" ? $"{final} added — converting to an ONNX voice now"
+                : $"{final} added");
         }
         catch (Exception ex)
         {
             ErrorLog.WriteEntry("VoiceLibrary.Import", ex);
             return (false, "import failed: " + ex.Message);
         }
+    }
+
+    // Moves a received file (`incoming`, inside the voices folder) into the
+    // library under `desired`, or the first free variant of it ("model 2.pth",
+    // "model 3.pth"…). A voice never replaces another one: voice libraries
+    // call nearly every checkpoint model.pth, and an overwrite left the old
+    // conversion (model.onnx) standing, so the app kept showing the old
+    // voice. A name counts as taken by either kind, the checkpoint or its
+    // conversion, since one becomes the other. The very same file arriving
+    // again is the voice already there (`again`), not a copy.
+    internal static string Land(string incoming, string desired, out bool again)
+    {
+        again = false;
+        var name = FreeName(desired, incoming);
+        var dest = Path.Combine(Dir, name);
+        if (File.Exists(dest)) { again = true; File.Delete(incoming); return name; }
+        File.Move(incoming, dest);
+        return name;
+    }
+
+    internal static string FreeName(string desired, string incoming)
+    {
+        var stem = Path.GetFileNameWithoutExtension(desired);
+        var ext = Path.GetExtension(desired);
+        var otherExt = ext.Equals(".pth", StringComparison.OrdinalIgnoreCase) ? ".onnx" : ".pth";
+        for (int n = 1; n < 10000; n++)
+        {
+            var s = n == 1 ? stem : $"{stem} {n}";
+            var path = Path.Combine(Dir, s + ext);
+            if (File.Exists(path))
+            {
+                if (SameContent(path, incoming)) return s + ext;
+                continue;
+            }
+            if (File.Exists(Path.Combine(Dir, s + otherExt))) continue;
+            return s + ext;
+        }
+        return $"{stem} {Guid.NewGuid().ToString("N")[..8]}{ext}";
+    }
+
+    private static bool SameContent(string a, string b)
+    {
+        try
+        {
+            var fa = new FileInfo(a); var fb = new FileInfo(b);
+            if (fa.Length != fb.Length) return false;
+            using var sa = fa.OpenRead(); using var sb = fb.OpenRead();
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            var ha = sha.ComputeHash(sa); var hb = sha.ComputeHash(sb);
+            return ha.AsSpan().SequenceEqual(hb);
+        }
+        catch { return false; }
     }
 
     // The voice to make active out of what a zip held: an export runs as
@@ -255,11 +307,9 @@ public static class VoiceLibrary
                     if (entry.Name.Length == 0 || ext is not (".pth" or ".onnx")) continue;
                     if (entry.Length > 4L << 30) return (false, $"{entry.Name} in the zip is too large");
                     var name = LibraryName(bundle, entry.FullName);
-                    var dest = Path.Combine(Dir, name);
-                    var tmp = dest + ".importing";
+                    var tmp = Path.Combine(Dir, name + ".importing");
                     entry.ExtractToFile(tmp, overwrite: true);
-                    File.Move(tmp, dest, overwrite: true);
-                    added.Add(name);
+                    added.Add(Land(tmp, name, out _));
                 }
             }
             if (added.Count == 0)
@@ -339,12 +389,11 @@ public static class VoiceLibrary
                 if (r.Ok) added = PickAdopted(fromZip);
                 return r;
             }
-            var dest = Path.Combine(Dir, name);
-            File.Move(tmp, dest, overwrite: true);
-            added = name;
-            return (true, name.EndsWith(".pth", StringComparison.OrdinalIgnoreCase)
-                ? $"{name} added — converting to an ONNX voice now"
-                : $"{name} added");
+            var final = Land(tmp, name, out bool again);
+            added = final;
+            return (true, again ? $"{final} is already in your library"
+                : final.EndsWith(".pth", StringComparison.OrdinalIgnoreCase) ? $"{final} added — converting to an ONNX voice now"
+                : $"{final} added");
         }
         catch (Exception ex)
         {

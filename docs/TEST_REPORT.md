@@ -740,3 +740,31 @@ saying so and naming its pid. Checked with stand-in processes named
 Morphonic.exe (copies of cmd.exe), one started like a person's app and one
 like a test's: 7 / 7 — the first is reported and survives both clean-ups,
 the walkthrough exits 2 without touching either, the second is stopped.
+
+## Linux: Import voice listed no file, and a voice could replace another
+
+Reported from a Linux install: no custom voice could be imported. Driven on
+the hidden display of the Fedora test system with xdotool (the Linux window
+has no remote-debugging port), the released 1.0.2 opened its Import voice
+dialog in a Downloads folder holding `model.pth` and `Gollum.pth`, and the
+dialog listed nothing. A small test program opening Photino's dialog with
+different filters showed why: on Linux Photino applies only one pattern per
+filter, so the "RVC voice" filter of `*.pth;*.onnx;*.zip` matched no file.
+It had been so since 1.0.0; no Linux test had clicked that button. The
+filters are one pattern each on Linux now, the first showing every file;
+Windows keeps its combined filter.
+
+Found on the way: every import route moved the new file over any library
+file of the same name. Voice libraries call nearly every checkpoint
+`model.pth`, so a second one replaced the first, the old `model.onnx`
+stayed, and the app went on showing the old voice. A new voice now lands
+under the first free name (`model 2.pth`), a name counting as taken by the
+checkpoint or its conversion; the very same file arriving again is the
+voice already there.
+
+| Check | Result |
+|---|---|
+| The fixed build on Fedora 44, hidden display: the dialog lists both files under "All files", `model.pth` picked and opened, converted in-app, made the active voice | pass |
+| Unit tests (two new: same-name imports by every route, one pattern per Linux filter) | 68 / 68 |
+
+Drag and drop onto the Linux window was not driven.

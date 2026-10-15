@@ -175,6 +175,68 @@ public class VoiceLibraryTests
     }
 
     [Fact]
+    public void ANewVoiceNeverReplacesOneWithTheSameName()
+    {
+        // voice libraries call nearly every checkpoint model.pth: a second,
+        // different one must land beside the first, never over it or its
+        // conversion; the very same file again is the voice already there
+        var dir = TempData();
+        try
+        {
+            var downloads = Path.Combine(dir, "Downloads");
+            Directory.CreateDirectory(downloads);
+            Directory.CreateDirectory(VoiceLibrary.Dir);
+            File.WriteAllBytes(Path.Combine(VoiceLibrary.Dir, "model.onnx"), new byte[] { 9 });   // an earlier voice, converted
+            File.WriteAllBytes(Path.Combine(VoiceLibrary.Dir, "model.pth"), new byte[] { 1, 1 });
+            File.WriteAllBytes(Path.Combine(downloads, "model.pth"), new byte[] { 2, 2 });
+            var (ok, message) = VoiceLibrary.Import(Path.Combine(downloads, "model.pth"), out var added);
+            Assert.True(ok, message);
+            Assert.Equal("model 2.pth", added);
+            Assert.Contains("converting", message);
+            Assert.Equal(new byte[] { 1, 1 }, File.ReadAllBytes(Path.Combine(VoiceLibrary.Dir, "model.pth")));
+            // the same file again: no third copy, it is the voice already there
+            (ok, message) = VoiceLibrary.Import(Path.Combine(downloads, "model.pth"), out added);
+            Assert.True(ok, message);
+            Assert.Equal("model 2.pth", added);
+            Assert.Contains("already in your library", message);
+            Assert.False(File.Exists(Path.Combine(VoiceLibrary.Dir, "model 3.pth")));
+            // a dropped file (streamed) and an export: the conversion's name counts as taken too
+            Assert.True(VoiceLibrary.BeginImport("model.pth", 1).Ok);
+            Assert.True(VoiceLibrary.AppendImport("model.pth", new byte[] { 3 }).Ok);
+            Assert.True(VoiceLibrary.EndImport("model.pth", out added).Ok);
+            Assert.Equal("model 3.pth", added);
+            File.WriteAllBytes(Path.Combine(VoiceLibrary.Dir, "Nova.pth"), new byte[] { 4 });   // not converted yet
+            Assert.True(VoiceLibrary.BeginImport("Nova.onnx", 1).Ok);
+            Assert.True(VoiceLibrary.AppendImport("Nova.onnx", new byte[] { 5 }).Ok);
+            Assert.True(VoiceLibrary.EndImport("Nova.onnx", out added).Ok);
+            Assert.Equal("Nova 2.onnx", added);
+            // two different checkpoints of the same name in one zip
+            var zip = Path.Combine(dir, "Pack.zip");
+            using (var z = ZipFile.Open(zip, ZipArchiveMode.Create))
+            {
+                using (var s = z.CreateEntry("a/model.pth").Open()) s.Write(new byte[] { 6 });
+                using (var s = z.CreateEntry("b/model.pth").Open()) s.Write(new byte[] { 7 });
+            }
+            Assert.True(VoiceLibrary.ImportZip(zip, out var fromZip).Ok);
+            Assert.Equal(2, fromZip.Distinct().Count());
+            Assert.Empty(Directory.GetFiles(VoiceLibrary.Dir, "*.importing"));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void TheLinuxImportDialogGetsOnePatternPerFileType()
+    {
+        // Photino's GTK dialog applies only the first pattern of a filter as given:
+        // a "*.pth;*.onnx;*.zip" filter listed no file at all on Linux
+        var linux = Program.VoiceFileFilters(linux: true);
+        Assert.All(linux, f => Assert.Single(f.Extensions));
+        Assert.Equal("*", linux[0].Extensions[0]);   // first: every file, nothing hidden
+        Assert.Equal(new[] { "*.pth", "*.onnx", "*.zip" }, linux.Skip(1).Select(f => f.Extensions[0]));
+        Assert.Equal(new[] { "*.pth", "*.onnx", "*.zip" }, Program.VoiceFileFilters(linux: false).Single().Extensions);
+    }
+
+    [Fact]
     public void WhatLandedIsReportedSoItCanBeAdopted()
     {
         var dir = TempData();
