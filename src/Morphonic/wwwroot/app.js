@@ -214,25 +214,42 @@ $('btnOpenVoices').addEventListener('click', () => send({ action: 'openVoicesFol
 $('btnOpenData').addEventListener('click', () => send({ action: 'openDataFolder' }));
 $('btnSaveReport').addEventListener('click', () => send({ action: 'saveReport' }));
 
-// ── update check (the first row of Settings) ───────────────────
+// ── updates (the first section of Settings) ────────────────────
 let updateUrl = '';
 $('btnCheckUpdate').addEventListener('click', () => send({ action: 'checkUpdate' }));
+$('btnInstallUpdate').addEventListener('click', () => send({ action: 'installUpdate' }));
 $('btnGetUpdate').addEventListener('click', () => { if (updateUrl) send({ action: 'openUrl', url: updateUrl }); });
 function renderUpdate(p) {
-  const desc = $('updateDesc'), notes = $('updateNotes'), get = $('btnGetUpdate'), btn = $('btnCheckUpdate');
-  btn.disabled = !!p.checking;
+  const desc = $('updateDesc'), notes = $('updateNotes'), get = $('btnGetUpdate'), btn = $('btnCheckUpdate'),
+        install = $('btnInstallUpdate'), prog = $('updateProgress'), bar = $('updateBar');
+  const busy = !!(p.checking || p.installing || p.restarting);
+  btn.disabled = busy; install.disabled = busy;
+  prog.hidden = !(p.installing || p.restarting);
   if (p.checking) { desc.textContent = 'Asking github.com…'; return; }
-  updateUrl = p.url || '';
-  if (p.error) { desc.textContent = p.error; get.hidden = true; notes.hidden = true; return; }
+  if (p.installing) {
+    const pct = p.total > 0 ? Math.min(100, Math.round(100 * p.received / p.total)) : 0;
+    bar.style.width = pct + '%';
+    desc.textContent = `Downloading ${p.latest}… ${MB(p.received)}${p.total > 0 ? ' of ' + MB(p.total) : ''}. Morphonic restarts by itself when it is done.`;
+    get.hidden = true; return;
+  }
+  if (p.restarting) { bar.style.width = '100%'; desc.textContent = `Version ${p.latest} is installed — restarting…`; install.hidden = true; return; }
+  if (p.url !== undefined) updateUrl = p.url || '';
+  if (p.error) {
+    desc.textContent = p.error; notes.hidden = true; install.hidden = true;
+    // Only when the app could not do it itself: the release page as the way out.
+    get.hidden = !updateUrl; return;
+  }
+  get.hidden = true;
   if (p.available) {
     desc.textContent = `Version ${p.latest} is available${p.published ? ' (published ' + p.published + ')' : ''}; you have ${p.current}.` +
-      (p.assetName ? ` Download ${p.assetName} (${MB(p.assetSize)}) from the release page, then replace this app with it.` : '');
+      (p.canInstall ? ` Update now downloads it${p.assetSize ? ' (' + MB(p.assetSize) + ')' : ''}, checks it and restarts Morphonic — your settings, voices and models stay.` : '');
     notes.textContent = p.notes ? p.notes.trim().split('\n').slice(0, 6).join('\n') : '';
     notes.hidden = !notes.textContent;
-    get.hidden = !updateUrl;
+    install.hidden = !p.canInstall;
+    get.hidden = !!p.canInstall || !updateUrl;
   } else {
     desc.textContent = `You have the latest version (${p.current}).`;
-    notes.hidden = true; get.hidden = true;
+    notes.hidden = true; install.hidden = true;
   }
 }
 
@@ -468,6 +485,7 @@ function renderBench(p) {
 // ── about / license docs ───────────────────────────────────────
 function renderDocs(p) {
   $('appVer').textContent = p.version ? 'v' + p.version : '';
+  $('updateVer').textContent = p.version || '';
   $('machineLine').textContent = p.machine ? 'This machine: ' + p.machine : '';
   $('dataDirLine').textContent = p.dataDir ? 'Data folder: ' + p.dataDir : '';
   $('btnOpenData').hidden = !p.dataDir;

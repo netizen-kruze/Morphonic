@@ -226,16 +226,20 @@ CPU for the rest of that run.
 
 ## Updates and uninstalling
 
-New versions ship as a fresh download — replace the binary. Your settings,
-voices, components and the GPU pack live in `%APPDATA%\Morphonic\` (Windows) or
-`~/.local/share/Morphonic/` (Linux) and survive updates.
+Your settings, voices, components and the GPU pack live in
+`%APPDATA%\Morphonic\` (Windows) or `~/.local/share/Morphonic/` (Linux) and
+survive updates.
 
-**Settings → Check for updates**, the first row of the screen, asks GitHub
-for the latest release when you press it (never on its own) and tells you
-whether a newer version exists and which file to fetch for your platform;
-**Open download page** takes you to the release in your browser. Every
-release carries a `SHA256SUMS.txt` so you can verify the download. Morphonic
-never downloads or replaces itself.
+**Settings → Updates**, the first section of the screen: **Check for updates**
+asks GitHub for the latest release when you press it (never on its own).
+When a newer version exists, **Update now** downloads this platform's file
+from that release, checks it against the release's `SHA256SUMS.txt`, puts it
+in place of the program file and restarts Morphonic — no browser involved.
+A file that does not match the checksum is thrown away and nothing changes.
+`Morphonic --update` does the same from a terminal. Morphonic never updates
+on its own. If its folder is not writable (a binary somewhere only an
+administrator can write), the update says so and offers the release page
+instead; replacing the binary by hand works as before.
 
 To fully uninstall: delete the app and that data folder. Windows also keeps
 one registry value under `HKEY_CURRENT_USER\Software\Morphonic` (records that
@@ -260,7 +264,9 @@ network activity:
   when you press Search, a file listing when you expand a result, and the
   download you choose. The three library links open in your own browser.
 - **Check for updates** on the Settings screen: one request to
-  api.github.com for the latest release, only when you press the button.
+  api.github.com for the latest release, only when you press the button;
+  **Update now** then downloads that release's file for your platform and
+  its `SHA256SUMS.txt` from github.com.
 - Nothing else. Audio never leaves the machine. The embedded WebView2
   browser is launched with its background networking, component updates,
   crash upload and reliability pings disabled.

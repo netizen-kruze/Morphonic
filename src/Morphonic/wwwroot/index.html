@@ -142,11 +142,15 @@
   <section class="view" id="view-settings">
     <div class="panel">
       <h2>Settings</h2>
-      <div class="group">
-        <!-- First on the screen, so it is found without scrolling. -->
-        <div class="setrow"><span class="grow"><span class="name">Updates</span><div class="desc" id="updateDesc">Asks github.com for the latest release when you press the button. Nothing is checked on its own.</div><div class="desc" id="updateNotes" style="white-space:pre-line" hidden></div></span>
+      <!-- First on the screen, so it is found without scrolling. -->
+      <div class="group" id="groupUpdates">
+        <h3>Updates</h3>
+        <div class="setrow last"><span class="grow"><span class="name">Morphonic <span id="updateVer"></span></span><div class="desc" id="updateDesc">Asks github.com for the latest release when you press the button. Nothing is checked on its own.</div><div class="desc" id="updateNotes" style="white-space:pre-line" hidden></div><div class="progress" id="updateProgress" hidden><i id="updateBar" style="width:0%"></i></div></span>
           <button class="chipbtn" id="btnGetUpdate" hidden>Open download page</button>
+          <button class="chipbtn amber" id="btnInstallUpdate" hidden>Update now</button>
           <button class="chipbtn" id="btnCheckUpdate">Check for updates</button></div>
+      </div>
+      <div class="group">
         <div class="setrow"><span class="grow"><span class="name">Recommended defaults</span><div class="desc">Sets the block size and context to the best choice for this machine, 50 ms crossfade, loudness following on, and automatic acceleration. Your devices and voice are untouched.</div></span>
           <button class="chipbtn amber" id="btnDefaults">Apply Recommended Default Settings</button></div>
         <div class="setrow"><span class="grow"><span class="name">Block size</span><div class="desc">How much audio each conversion pass handles. Smaller = less delay but more passes per second; if the pace chip turns red, go up.</div></span>

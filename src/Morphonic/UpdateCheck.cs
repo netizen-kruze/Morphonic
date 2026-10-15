@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -10,9 +11,9 @@ namespace Morphonic;
 
 // Settings > "Check for updates" (the first row): one request to GitHub's
 // "latest release" endpoint for the project's repository, made only when
-// the user presses the button — never on a timer, never at start-up. The
-// answer is shown; fetching the new binary stays a download the user does
-// in their own browser, where the release page carries the file hashes.
+// the user presses the button — never on a timer, never at start-up. A
+// newer release is offered as "Update now" (Updater), which fetches this
+// platform's file and the release's SHA256SUMS.txt from the same release.
 public static class UpdateCheck
 {
     // The GitHub repository the releases are published from.
@@ -26,11 +27,13 @@ public static class UpdateCheck
     public static bool Configured => FeedUrl.Length > 0;
 
     public sealed record Result(string Current, string Latest, bool Available, string Url,
-        string Notes, string AssetName, long AssetSize, string Published);
+        string Notes, string AssetName, long AssetSize, string Published,
+        string AssetUrl = "", string SumsUrl = "");
 
-    // The release asset a user on this platform would download: the plain
-    // build, never the offline one (that is a choice they make knowingly).
+    // The release asset for this platform: the plain build, or the offline
+    // one when that is what is running (it carries the model files inside).
     public static string AssetSuffix => OperatingSystem.IsWindows() ? "-win-x64.zip" : "-linux-x64";
+    public static bool RunningOffline => Rvc.OfflinePayload.Ids.Count > 0;
 
     public static async Task<Result> CheckAsync(Version current, CancellationToken ct)
     {
@@ -46,12 +49,25 @@ public static class UpdateCheck
         if (!resp.IsSuccessStatusCode)
             throw new HttpRequestException($"github.com answered HTTP {(int)resp.StatusCode}");
         var json = await resp.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false);
-        return Parse(json, current, AssetSuffix);
+        return Parse(json, current, AssetSuffix, RunningOffline, AllowedDownloadHosts());
     }
 
     // Pure: the release document against the running version.
-    public static Result Parse(string json, Version current, string assetSuffix)
+    // Downloads come from github.com (which redirects to its own storage);
+    // a test feed (--update-feed) may also serve them from its own host.
+    public static string[] AllowedDownloadHosts()
     {
+        var hosts = new List<string> { "github.com" };
+        if (Uri.TryCreate(FeedUrl, UriKind.Absolute, out var f) && f.Host != "api.github.com") hosts.Add(f.Host);
+        return hosts.ToArray();
+    }
+
+    public static Result Parse(string json, Version current, string assetSuffix, bool offline = false, string[]? downloadHosts = null)
+    {
+        downloadHosts ??= new[] { "github.com" };
+        string Checked(string? link) =>
+            Uri.TryCreate(link, UriKind.Absolute, out var l) && downloadHosts.Contains(l.Host) &&
+            (l.Scheme == "https" || (l.Scheme == "http" && l.IsLoopback)) ? l.AbsoluteUri : "";
         JObject doc;
         try { doc = JObject.Parse(json); }
         catch (Exception ex) { throw new FormatException("the release document is not valid JSON: " + ex.Message); }
@@ -62,20 +78,24 @@ public static class UpdateCheck
         var url = doc["html_url"]?.ToString() ?? "";
         if (!Uri.TryCreate(url, UriKind.Absolute, out var u) || u.Scheme != "https" || u.Host != "github.com") url = "";
 
-        string assetName = "";
+        string assetName = "", assetUrl = "", sumsUrl = "";
         long assetSize = 0;
+        var suffix = offline ? assetSuffix.Replace(".zip", "") + "-offline" + (assetSuffix.EndsWith(".zip") ? ".zip" : "") : assetSuffix;
         if (doc["assets"] is JArray assets)
         {
             var asset = assets.FirstOrDefault(a =>
             {
                 var n = a["name"]?.ToString() ?? "";
-                return n.EndsWith(assetSuffix, StringComparison.OrdinalIgnoreCase) && !n.Contains("-offline", StringComparison.OrdinalIgnoreCase);
+                return n.EndsWith(suffix, StringComparison.OrdinalIgnoreCase) && (offline || !n.Contains("-offline", StringComparison.OrdinalIgnoreCase));
             });
             if (asset != null)
             {
                 assetName = asset["name"]?.ToString() ?? "";
                 assetSize = asset["size"]?.Value<long>() ?? 0;
+                assetUrl = Checked(asset["browser_download_url"]?.ToString());
             }
+            var sums = assets.FirstOrDefault(a => string.Equals(a["name"]?.ToString(), "SHA256SUMS.txt", StringComparison.OrdinalIgnoreCase));
+            if (sums != null) sumsUrl = Checked(sums["browser_download_url"]?.ToString());
         }
 
         string published = "";
@@ -83,7 +103,7 @@ public static class UpdateCheck
             published = when.ToString("yyyy-MM-dd");
 
         return new Result(cur.ToString(3), latest.ToString(3), latest > cur, url,
-            doc["body"]?.ToString() ?? "", assetName, assetSize, published);
+            doc["body"]?.ToString() ?? "", assetName, assetSize, published, assetUrl, sumsUrl);
     }
 
     // "v1.2.3", "1.2.3" or "1.2" -> 1.2.3 / 1.2.0; anything else -> null.

@@ -50,7 +50,7 @@ internal static class Program
     {
         _bootTick = Environment.TickCount64;
         InstallCrashHandlers();
-        if (args.Any(a => a is "--help" or "-h" or "--bench" or "--install-gpu" or "--fetch-models" or "--pack-offline" or "--install" or "--uninstall" or "--convert" or "--report")) WindowsHost.AttachParentConsole();
+        if (args.Any(a => a is "--help" or "-h" or "--bench" or "--install-gpu" or "--fetch-models" or "--pack-offline" or "--install" or "--uninstall" or "--convert" or "--report" or "--update")) WindowsHost.AttachParentConsole();
         if (args.Contains("--help") || args.Contains("-h")) { Console.WriteLine(Usage); return 0; }
         // A support bundle from the terminal: works when the window cannot open.
         if (args.Contains("--report"))
@@ -67,6 +67,7 @@ internal static class Program
         if (args.Contains("--install-virtual-mic") || args.Contains("--remove-virtual-mic")) return VirtualMicElevated(args);
         // Test hook: the update check against a local server instead of github.com.
         if (ArgValue(args, "--update-feed") is { } feed) UpdateCheck.FeedUrl = feed;
+        if (args.Contains("--update")) return SelfUpdate();
         if (args.Contains("--bench")) return RunBench();
         if (args.Contains("--install-gpu")) return InstallGpu();
         if (args.Contains("--fetch-models")) return FetchModels(args.Contains("--no-voice"));
@@ -96,6 +97,7 @@ internal static class Program
             LinuxHost.Notify("Morphonic", "Morphonic is already running.");
             return 0;
         }
+        Updater.CleanUp();
 
         if (OperatingSystem.IsWindows())
         {
@@ -231,7 +233,8 @@ internal static class Program
         }
         ctrl.PickFiles = () => _window.ShowOpenFile("Choose an RVC voice (.pth, .onnx, or the .zip a voice library gave you)", null, true,
             VoiceFileFilters(OperatingSystem.IsLinux()));
-        ctrl.RestartRequested += RestartApp;
+        ctrl.RestartRequested += () => RestartApp();
+        ctrl.UpdateInstalled += exe => RestartApp(exe);
         ctrl.ArmSafeBoot(unfinished != null);
         _autoStart = autoStart && unfinished == null;   // a safe boot never auto-starts
         using var runTimer = runSeconds > 0
@@ -304,6 +307,7 @@ internal static class Program
         "                                     write the offline build: this binary (or --base) with the catalog's model files inside (build.ps1 -Offline)\n" +
         "  Morphonic --install                    (Linux) copy this binary to ~/.local/share/Morphonic/app and add it to the app grid\n" +
         "  Morphonic --uninstall [--purge]        (Linux) remove that install; --purge also removes settings, voices and models\n" +
+        "  Morphonic --update                     download, check and put in place the latest release (as Settings > Updates > Update now)\n" +
         "  Morphonic --report                     write a support bundle (logs, settings, machine) as a zip in the data folder, print its path\n" +
         "  --data-dir <dir>                   use another data folder (tools/smoke.*)\n" +
         "  --debug-port <n>                   (Windows) expose the page over the DevTools protocol for tools/ui_walkthrough.py\n" +
@@ -318,6 +322,37 @@ internal static class Program
         Console.WriteLine(result.Message);
         return result.Ok ? 0 : 1;
     }
+
+    // "--update": Settings > Updates > Update now from a terminal. Replaces
+    // the program file; a running window keeps the old version until it is
+    // restarted.
+    private static int SelfUpdate()
+    {
+        Download.SetUserAgent($"Morphonic/{Version}");
+        Updater.CleanUp();
+        try
+        {
+            var current = typeof(Program).Assembly.GetName().Version ?? new System.Version(1, 0, 0);
+            var r = UpdateCheck.CheckAsync(current, CancellationToken.None).GetAwaiter().GetResult();
+            if (!r.Available) { Console.WriteLine($"Morphonic {r.Current} is the latest version."); return 0; }
+            Console.WriteLine($"Morphonic {r.Latest} is available (this is {r.Current}); downloading {r.AssetName}…");
+            int lastPct = -1;
+            var done = Updater.InstallAsync(r, (n, total) =>
+            {
+                int pct = total > 0 ? (int)(100 * n / total) : 0;
+                if (pct / 10 != lastPct / 10) { lastPct = pct; Console.WriteLine($"  {pct} %"); }
+            }, CancellationToken.None).GetAwaiter().GetResult();
+            BootLog.Append($"update (terminal): {done.To} is in place of {done.From} at {done.ExePath}");
+            Console.WriteLine($"Updated to {done.To}: {done.ExePath}");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine("The update did not install: " + ex.Message);
+            return 1;
+        }
+    }
+
 
     // "--pack-offline <modelsDir> <out> [--base <binary>]": the offline
     // build, a copy of this binary (or of --base, e.g. the Linux file) with
@@ -544,12 +579,14 @@ internal static class Program
 
     // Relaunch (the GPU pack and the acceleration choice bind at native
     // load time): start a fresh process that waits for this one, then leave.
-    private static void RestartApp()
+    // After an update `exe` names the program file as it was before the
+    // swap (the running process's own path may by now point elsewhere).
+    private static void RestartApp(string? exe = null)
     {
         if (_exiting) return;
         try
         {
-            var exe = Environment.ProcessPath ?? throw new InvalidOperationException("no process path");
+            exe ??= Environment.ProcessPath ?? throw new InvalidOperationException("no process path");
             var psi = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe) ?? "" };
             // The new process keeps this one's arguments (--data-dir, test
             // hooks) apart from a previous --after, which is replaced.

@@ -787,3 +787,31 @@ files equal the local ones.
 | Fedora 44: a voice picked in the Import dialog (hidden display, xdotool), converted in-app | pass |
 | Fedora 44 scenarios s01–s04, s06, s09, s10, s13, s17, s23, s29 | 126 / 126 |
 | Live feed after publishing: 1.0.2 is offered 1.0.3 with the Windows file; 1.0.3 says it is the latest | 2 / 2 |
+
+# 1.0.4: updating from inside the app — 2026-10-14
+
+Settings now opens with an **Updates** section naming the running version.
+After Check for updates finds a newer release, **Update now** downloads
+this platform's file (the offline file when the offline build is running)
+and the release's `SHA256SUMS.txt`, checks the hash, and puts the file in
+place of the program: on Windows the running exe is renamed to
+`Morphonic.exe.old` (removed at the next start) and the new one takes its
+name; on Linux the new file is renamed over the old. The app restarts
+itself (`--after <pid>`, as the GPU-pack restart does) and the first start
+says "Morphonic is updated to …". Downloads are accepted only from
+github.com (or a test feed's own host). `Morphonic --update` does the same
+from a terminal.
+
+Tested against a local release feed (`--update-feed`) offering a 1.0.5
+build of the same code:
+
+| Check | Result |
+|---|---|
+| Unit tests (four new: download links and offline variant, foreign hosts refused, checksum list parsing, the swap) | 72 / 72 |
+| Windows, `--update` from the 1.0.4 release exe: a checksum that does not match is refused, exe unchanged, no leftovers | pass |
+| Windows, `--update`: the running exe is renamed aside and 1.0.5 takes its place; the new exe reports 1.0.5 as the latest | pass |
+| Fedora 44, hidden display, the 1.0.4 release binary: Updates first on Settings, Check → "1.0.5 is available" with Update now, Update now → restarted as 1.0.5 (`updated from 1.0.4 to 1.0.5`), Check → latest | pass |
+
+The Windows window flow (button and restart) was not driven: the user's
+own Morphonic was open, and Windows runs one copy at a time. The restart
+is the one the GPU pack has used since 1.0.0.

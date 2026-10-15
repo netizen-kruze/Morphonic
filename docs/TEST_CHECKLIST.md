@@ -175,13 +175,20 @@ Simulate a fresh machine: quit Morphonic, rename the data folder away
       the dnf hint instead of a crash; `tools/smoke.sh <binary>` passes.
 - [ ] Update simulation: replace the binary only → settings, voices,
       components and the GPU pack survive.
-- [ ] Settings → Check for updates is the first row of the screen, in view
-      without scrolling. With the network on, the row
-      says either "You have the latest version" or names the newer version
-      with the matching file for this platform, and "Open download page"
-      opens the GitHub release in the browser; with the network off it says
-      "Could not check" and nothing else changes. No request is made before
-      the button is pressed (`last_boot.log` has no "update check" line).
+- [ ] Settings → Updates is the first section of the screen, in view
+      without scrolling, and names the running version. With the network
+      on, Check for updates says either "You have the latest version" or
+      names the newer version with **Update now**; with the network off it
+      says "Could not check" and nothing else changes. No request is made
+      before the button is pressed (`last_boot.log` has no "update check"
+      line).
+- [ ] Update now (an older build, e.g. the previous release): a progress
+      bar, then Morphonic closes and reopens by itself on the new version
+      with a toast "Morphonic is updated to …"; settings and voices are as
+      before; `last_boot.log` says "updated from … to …". Windows leaves
+      `Morphonic.exe.old` beside the exe until the next start removes it.
+      In a folder only an administrator can write, it says so and shows
+      "Open download page".
 - [ ] Offline build (`-offline`): with the network off, first run says
       "included in this build", Set up finishes in seconds without a
       download, Verify passes, and the Models buttons read Unpack.

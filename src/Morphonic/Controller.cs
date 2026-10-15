@@ -53,6 +53,9 @@ public sealed class VoiceController : IDisposable
     private long _lastProgressSentAt;
     private int _benchRunning;
     private int _checkingUpdate;
+    private int _installingUpdate;
+    private UpdateCheck.Result? _lastUpdate;
+    private long _lastUpdateProgressAt;
     private volatile bool _virtualMicBusy;
     private string _converting = "";
 
@@ -67,6 +70,8 @@ public sealed class VoiceController : IDisposable
     // The host supplies the native file dialog (window thread only).
     public Func<string[]?>? PickFiles { get; set; }
     public event Action? RestartRequested;
+    // An update is in place: the host restarts from this program file.
+    public event Action<string>? UpdateInstalled;
 
     public bool IsRunning => _engine != null;
     public AppSettings Settings => _settings;
@@ -95,6 +100,23 @@ public sealed class VoiceController : IDisposable
         // A first run that never touches a setting would otherwise leave no
         // settings file for the boot log to report on.
         lock (_settingsLock) if (!AppSettings.FileExists) _settings.Save();
+        // The first start after "Update now" says so.
+        try
+        {
+            var marker = Path.Combine(AppPaths.DataDir, "updated.txt");
+            if (File.Exists(marker))
+            {
+                var parts = File.ReadAllText(marker).Split(' ');
+                File.Delete(marker);
+                var now = typeof(VoiceController).Assembly.GetName().Version?.ToString(3);
+                if (parts.Length == 2 && parts[1] == now)
+                {
+                    BootLog.Append($"updated from {parts[0]} to {now}");
+                    _send("toast", new { ok = true, msg = $"Morphonic is updated to {now}" });
+                }
+            }
+        }
+        catch { }
     }
 
     private static void RunOffUiThread(Action work) =>
@@ -375,9 +397,8 @@ public sealed class VoiceController : IDisposable
                 }
                 break;
 
-            // Settings -> About: one request to the release feed, on the
-            // user's press only. The answer is shown; the download is theirs
-            // to make in the browser.
+            // Settings -> Updates (the top of the screen): one request to the
+            // release feed, on the user's press only.
             case "checkUpdate":
                 {
                     if (!UpdateCheck.Configured) { _send("toast", new { ok = false, msg = "Update checks are not configured in this build" }); break; }
@@ -392,8 +413,10 @@ public sealed class VoiceController : IDisposable
                             BootLog.Append(r.Available
                                 ? $"update check: {r.Latest} is available (running {r.Current})"
                                 : $"update check: {r.Current} is the latest");
+                            _lastUpdate = r;
                             _send("update", new { current = r.Current, latest = r.Latest, available = r.Available, url = r.Url,
-                                notes = r.Notes, assetName = r.AssetName, assetSize = r.AssetSize, published = r.Published });
+                                notes = r.Notes, assetName = r.AssetName, assetSize = r.AssetSize, published = r.Published,
+                                canInstall = r.AssetUrl.Length > 0 && r.SumsUrl.Length > 0 });
                         }
                         catch (Exception ex)
                         {
@@ -402,6 +425,43 @@ public sealed class VoiceController : IDisposable
                             _send("update", new { error = "Could not check: " + ex.Message });
                         }
                         finally { Interlocked.Exchange(ref _checkingUpdate, 0); }
+                    });
+                }
+                break;
+
+            // "Update now": download, check against the release's checksums,
+            // swap the program file, restart. The voice stops for the restart.
+            case "installUpdate":
+                {
+                    var r = _lastUpdate;
+                    if (r == null || !r.Available) break;
+                    if (Interlocked.Exchange(ref _installingUpdate, 1) == 1) break;
+                    BootLog.Append($"update: installing {r.Latest} ({r.AssetName})");
+                    _send("update", new { installing = true, latest = r.Latest, received = 0L, total = r.AssetSize });
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            var done = await Updater.InstallAsync(r, (n, total) =>
+                            {
+                                long now = Environment.TickCount64;
+                                if (now - _lastUpdateProgressAt < 150 && n != total) return;
+                                _lastUpdateProgressAt = now;
+                                _send("update", new { installing = true, latest = r.Latest, received = n, total });
+                            }, CancellationToken.None).ConfigureAwait(false);
+                            BootLog.Append($"update: {done.To} is in place of {done.From} at {done.ExePath}; restarting");
+                            try { File.WriteAllText(Path.Combine(AppPaths.DataDir, "updated.txt"), done.From + " " + done.To); } catch { }
+                            _send("update", new { restarting = true, latest = r.Latest });
+                            await Task.Delay(400).ConfigureAwait(false);
+                            UpdateInstalled?.Invoke(done.ExePath);
+                        }
+                        catch (Exception ex)
+                        {
+                            ErrorLog.WriteNote("Update", ex.Message);
+                            BootLog.Append("update failed: " + ex.Message);
+                            _send("update", new { error = "The update did not install: " + ex.Message, url = r.Url });
+                        }
+                        finally { Interlocked.Exchange(ref _installingUpdate, 0); }
                     });
                 }
                 break;
