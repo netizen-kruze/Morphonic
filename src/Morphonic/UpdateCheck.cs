@@ -31,8 +31,9 @@ public static class UpdateCheck
         string AssetUrl = "", string SumsUrl = "");
 
     // The release asset for this platform: the plain build, or the offline
-    // one when that is what is running (it carries the model files inside).
-    public static string AssetSuffix => OperatingSystem.IsWindows() ? "-win-x64.zip" : "-linux-x64";
+    // one when that is what is running (it carries the model files inside);
+    // on Linux the AppImage when the app runs from one, else the bare binary.
+    public static string AssetSuffix => OperatingSystem.IsWindows() ? "-win-x64.zip" : AppFile.IsAppImage ? "-linux-x64.AppImage" : "-linux-x64";
     public static bool RunningOffline => Rvc.OfflinePayload.Ids.Count > 0;
 
     public static async Task<Result> CheckAsync(Version current, CancellationToken ct)
@@ -80,7 +81,10 @@ public static class UpdateCheck
 
         string assetName = "", assetUrl = "", sumsUrl = "";
         long assetSize = 0;
-        var suffix = offline ? assetSuffix.Replace(".zip", "") + "-offline" + (assetSuffix.EndsWith(".zip") ? ".zip" : "") : assetSuffix;
+        // "-win-x64.zip" -> "-win-x64-offline.zip", "-linux-x64.AppImage" ->
+        // "-linux-x64-offline.AppImage", "-linux-x64" -> "-linux-x64-offline".
+        int dot = assetSuffix.IndexOf('.');
+        var suffix = !offline ? assetSuffix : dot < 0 ? assetSuffix + "-offline" : assetSuffix[..dot] + "-offline" + assetSuffix[dot..];
         if (doc["assets"] is JArray assets)
         {
             var asset = assets.FirstOrDefault(a =>

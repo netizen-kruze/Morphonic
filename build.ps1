@@ -3,6 +3,8 @@
 #   releases\Morphonic-<version>-win-x64.zip      a single Morphonic.exe, no installer
 #   releases\Morphonic-<version>-linux-x64        one self-contained Linux binary (cross-published;
 #                                             no Linux toolchain needed - the .NET SDK does it)
+#   releases\Morphonic-<version>-linux-x64.AppImage  the same binary as an AppImage (tools/build-appimage.sh,
+#                                             run in a WSL distro with squashfs-tools: -AppImageDistro)
 # Both are self-contained single-file publishes: the .NET runtime, the
 # interface and the CPU inference runtime are inside; GPU acceleration is
 # downloaded in-app.
@@ -28,7 +30,12 @@ param(
   [switch]$DriverOnly,
   # -Ewdk <root>: build the driver with a mounted Enterprise WDK (its
   # BuildEnv\SetupBuildEnv.cmd) instead of an installed Visual Studio.
-  [string]$Ewdk = ''
+  [string]$Ewdk = '',
+  # The Linux files are also packed as AppImages, in this WSL distro (it
+  # needs squashfs-tools); -NoAppImage leaves them out. A release without
+  # them strands AppImage users' in-app updates, so it is not the default.
+  [string]$AppImageDistro = 'FedoraLinux-44',
+  [switch]$NoAppImage
 )
 $ErrorActionPreference = 'Stop'
 if ($Driver -or $DriverOnly) {
@@ -115,6 +122,22 @@ if ($Target -ne 'win') {
     $mb = [math]::Round((Get-Item $offFile).Length / 1MB, 1)
     Write-Host "==> Done: $offFile ($mb MB, models inside)" -ForegroundColor Green
     Write-Host "    SHA-256: $((Get-FileHash $offFile -Algorithm SHA256).Hash)"
+  }
+  if (-not $NoAppImage) {
+    $distros = (wsl.exe -l -q) -replace "`0", '' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+    if ($distros -notcontains $AppImageDistro) { throw "the AppImages are packed in WSL ($AppImageDistro, with squashfs-tools), which is not installed - or pass -NoAppImage" }
+    # C:\x\y -> /mnt/c/x/y (WSL's default automount)
+    function ToWsl([string]$path) { $f = [IO.Path]::GetFullPath($path); '/mnt/' + $f.Substring(0, 1).ToLower() + ($f.Substring(2) -replace '\\', '/') }
+    $script = ToWsl (Join-Path $PSScriptRoot 'tools\build-appimage.sh')
+    $pairs = @(, @($file, "$file.AppImage"))   # the comma keeps it a list of pairs
+    if ($Offline) { $pairs += ,@($offFile, "$offFile.AppImage") }
+    foreach ($pair in $pairs) {
+      Write-Host "==> Packing $(Split-Path -Leaf $pair[1]) in WSL ($AppImageDistro)" -ForegroundColor Cyan
+      wsl.exe -d $AppImageDistro -- bash $script (ToWsl $pair[0]) (ToWsl $pair[1]) $ver
+      if ($LASTEXITCODE -ne 0 -or -not (Test-Path $pair[1])) { throw "AppImage packing failed: $($pair[1])" }
+      $mb = [math]::Round((Get-Item $pair[1]).Length / 1MB, 1)
+      Write-Host "==> Done: $($pair[1]) ($mb MB)" -ForegroundColor Green
+    }
   }
 }
 # releases\SHA256SUMS.txt: one line per release file, in sha256sum's format,

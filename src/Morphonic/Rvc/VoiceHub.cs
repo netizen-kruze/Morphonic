@@ -42,7 +42,9 @@ public static class VoiceHub
         return list;
     }
 
-    public static async Task<List<HubFile>> ListFilesAsync(string repo, CancellationToken ct)
+    public static Task<List<HubFile>> ListFilesAsync(string repo, CancellationToken ct) => ListAsync(repo, VoiceExt, ct);
+
+    private static async Task<List<HubFile>> ListAsync(string repo, string[] extensions, CancellationToken ct)
     {
         if (!RepoId.IsMatch(repo)) throw new ArgumentException("not a repository id");
         var json = await GetAsync($"{Api}/{repo}/tree/main?recursive=true", ct);
@@ -51,13 +53,61 @@ public static class VoiceHub
         {
             if (e["type"]?.ToString() != "file") continue;
             var path = e["path"]?.ToString() ?? "";
-            if (!VoiceExt.Contains(System.IO.Path.GetExtension(path).ToLowerInvariant())) continue;
+            if (!extensions.Contains(System.IO.Path.GetExtension(path).ToLowerInvariant())) continue;
             if (path.Contains("..", StringComparison.Ordinal) || path.StartsWith('/')) continue;
             long size = e["size"]?.Value<long>() ?? 0;
             var sha = e["lfs"]?["oid"]?.ToString();
             files.Add(new HubFile(path, size, sha != null && sha.Length == 64 ? sha : null));
         }
         return files.OrderBy(f => f.Path, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    // The .index that goes with repo/voicePath: one in the same folder of
+    // the repository, or the only one when the repository holds one voice.
+    // RVC's "added_…" index is preferred over the "trained_…" one.
+    internal static HubFile? PickIndex(IReadOnlyList<HubFile> all, string voicePath)
+    {
+        static string Folder(string p) { int i = p.LastIndexOf('/'); return i < 0 ? "" : p[..i]; }
+        var indexes = all.Where(f => f.Path.EndsWith(".index", StringComparison.OrdinalIgnoreCase) && f.SizeBytes > 0).ToList();
+        var voices = all.Count(f => VoiceExt.Contains(System.IO.Path.GetExtension(f.Path).ToLowerInvariant()));
+        var near = indexes.Where(f => Folder(f.Path) == Folder(voicePath)).ToList();
+        if (near.Count == 0 && voices <= 1) near = indexes;
+        return near.OrderByDescending(f => System.IO.Path.GetFileName(f.Path).StartsWith("added", StringComparison.OrdinalIgnoreCase))
+                   .ThenBy(f => System.IO.Path.GetFileName(f.Path).StartsWith("trained", StringComparison.OrdinalIgnoreCase))
+                   .ThenByDescending(f => f.SizeBytes).FirstOrDefault();
+    }
+
+    // Fetches and attaches the index for a voice that just landed; returns
+    // the import answer's suffix ("" when there was none or it failed).
+    private static async Task<string> FetchIndexAsync(string repo, string voicePath, string voiceId, Action<long, long> progress, CancellationToken ct)
+    {
+        if (VoiceLibrary.HasIndex(voiceId)) return "";
+        HubFile? index;
+        try { index = PickIndex(await ListAsync(repo, new[] { ".pth", ".onnx", ".zip", ".index" }, ct), voicePath); }
+        catch (Exception ex) when (ex is not OperationCanceledException) { BootLog.Append($"index lookup for {repo} failed: {ex.Message}"); return ""; }
+        if (index == null) return "";
+        var name = System.IO.Path.GetFileNameWithoutExtension(voiceId) + ".index";
+        var (ok, err) = VoiceLibrary.BeginImport(name, index.SizeBytes);
+        if (!ok) { BootLog.Append($"index for {voiceId} not fetched: {err}"); return ""; }
+        var partial = VoiceLibrary.ImportingPath(name);
+        try
+        {
+            using var sha = SHA256.Create();
+            long got = await Download.ResumableDownloadAsync(DownloadUrl(repo, index.Path), partial, index.SizeBytes, sha, n => progress(n, index.SizeBytes), ct);
+            var hash = Convert.ToHexString(sha.Hash!).ToLowerInvariant();
+            if (got != index.SizeBytes || (index.Sha256 != null && hash != index.Sha256))
+            {
+                BootLog.Append($"index {repo}/{index.Path}: the download does not match the repository's size or hash");
+                return "";
+            }
+            var (attached, message) = VoiceLibrary.AttachIndex(partial, voiceId);
+            if (!attached) { BootLog.Append($"index {repo}/{index.Path} not used: {message}"); return ""; }
+            BootLog.Append($"index {repo}/{index.Path} added to {voiceId}");
+            return " with its index";
+        }
+        catch (OperationCanceledException) { return ""; }
+        catch (Exception ex) { BootLog.Append($"index {repo}/{index.Path} failed: {ex.Message}"); return ""; }
+        finally { VoiceLibrary.AbortImport(name); }
     }
 
     public static string DownloadUrl(string repo, string path)
@@ -87,6 +137,13 @@ public static class VoiceHub
             var hash = Convert.ToHexString(sha.Hash!).ToLowerInvariant();
             if (sha256 != null && hash != sha256) { VoiceLibrary.AbortImport(name); return (false, $"{name}: SHA-256 mismatch — the download is corrupt", name); }
             var (done, message) = VoiceLibrary.EndImport(name, out var added);
+            // A voice file brings the repository's index along (a zip
+            // carries its own).
+            if (done && added != null && !path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            {
+                var withIndex = await FetchIndexAsync(repo, path, added, progress, ct);
+                if (withIndex.Length > 0) message = message.Replace(" added", " added" + withIndex);
+            }
             return (done, message, added ?? name);
         }
         catch (OperationCanceledException)

@@ -14,7 +14,9 @@ public class UpdateCheckTests
 
     private static readonly string Assets = string.Join(",",
         A("Morphonic-1.0.1-win-x64-offline.zip", 700000000), A("Morphonic-1.0.1-win-x64.zip", 38000000),
-        A("Morphonic-1.0.1-linux-x64-offline", 900000000), A("Morphonic-1.0.1-linux-x64", 48000000), A("SHA256SUMS.txt", 400));
+        A("Morphonic-1.0.1-linux-x64-offline", 900000000), A("Morphonic-1.0.1-linux-x64", 48000000),
+        A("Morphonic-1.0.1-linux-x64-offline.AppImage", 890000000), A("Morphonic-1.0.1-linux-x64.AppImage", 46000000),
+        A("SHA256SUMS.txt", 400));
 
     [Fact]
     public void NewerReleaseIsOfferedWithThePlainAssetForThePlatform()
@@ -76,6 +78,39 @@ public class UpdateCheckTests
         Assert.Equal("Morphonic-1.0.1-win-x64-offline.zip", UpdateCheck.Parse(Release("v1.0.1", Assets), new Version(1, 0, 0), "-win-x64.zip", offline: true).AssetName);
         Assert.Equal("Morphonic-1.0.1-linux-x64-offline", UpdateCheck.Parse(Release("v1.0.1", Assets), new Version(1, 0, 0), "-linux-x64", offline: true).AssetName);
         Assert.Equal("Morphonic-1.0.1-linux-x64", UpdateCheck.Parse(Release("v1.0.1", Assets), new Version(1, 0, 0), "-linux-x64").AssetName);
+    }
+
+    [Fact]
+    public void AnAppImageUpdatesToTheAppImageAndABinaryToTheBinary()
+    {
+        Assert.Equal("Morphonic-1.0.1-linux-x64.AppImage", UpdateCheck.Parse(Release("v1.0.1", Assets), new Version(1, 0, 0), "-linux-x64.AppImage").AssetName);
+        Assert.Equal("Morphonic-1.0.1-linux-x64-offline.AppImage", UpdateCheck.Parse(Release("v1.0.1", Assets), new Version(1, 0, 0), "-linux-x64.AppImage", offline: true).AssetName);
+        Assert.Equal("Morphonic-1.0.1-linux-x64", UpdateCheck.Parse(Release("v1.0.1", Assets), new Version(1, 0, 0), "-linux-x64").AssetName);
+        Assert.Equal("Morphonic-1.0.1-linux-x64-offline", UpdateCheck.Parse(Release("v1.0.1", Assets), new Version(1, 0, 0), "-linux-x64", offline: true).AssetName);
+        // a release before AppImages: an AppImage finds nothing to update itself with (the release page is offered)
+        var older = string.Join(",", A("Morphonic-1.0.1-linux-x64", 48000000), A("SHA256SUMS.txt", 400));
+        Assert.Equal("", UpdateCheck.Parse(Release("v1.0.1", older), new Version(1, 0, 0), "-linux-x64.AppImage").AssetUrl);
+    }
+
+    [Fact]
+    public void TheAppImageIsBelievedOnlyFromInsideItsOwnMount()
+    {
+        var dir = Directory.CreateTempSubdirectory("morphonic-appimage").FullName;
+        try
+        {
+            var image = Path.Combine(dir, "Morphonic-1.0.5-linux-x64.AppImage");
+            File.WriteAllText(image, "x");
+            const string mount = "/tmp/.mount_MorphoXyz";
+            var inside = AppFile.FromAppImage(image, mount, mount + "/usr/bin/Morphonic");
+            var inherited = AppFile.FromAppImage(image, "/tmp/.mount_Terminal", "/home/u/Morphonic");   // a binary run from an AppImage'd terminal
+            var gone = AppFile.FromAppImage(Path.Combine(dir, "deleted.AppImage"), mount, mount + "/usr/bin/Morphonic");
+            if (OperatingSystem.IsLinux()) Assert.Equal(image, inside);
+            else Assert.Null(inside);                       // Windows never runs from an AppImage
+            Assert.Null(inherited);
+            Assert.Null(gone);
+            Assert.Null(AppFile.FromAppImage(null, null, "/usr/bin/x"));
+        }
+        finally { Directory.Delete(dir, true); }
     }
 
     [Fact]

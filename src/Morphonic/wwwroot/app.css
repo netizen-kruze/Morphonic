@@ -103,6 +103,11 @@ button:focus-visible,select:focus-visible,input:focus-visible,.toggle:focus-visi
   border:1px solid var(--brd);border-radius:7px;padding:7px 10px;min-width:170px;max-width:240px
 }
 .pitchctl{min-width:190px}
+.sliders{display:flex;flex-direction:column;gap:0}
+.sliders .pitchctl input[type=range]{margin:5px 0 4px}
+.indexctl.off label output{color:var(--tx3)}
+.indexctl input[type=range]:disabled{opacity:.45}
+.badge.idx{color:var(--amber);border-color:color-mix(in srgb,var(--amber) 45%,transparent)}
 .pitchctl input[type=range]{width:190px;accent-color:var(--amber);margin:9px 0 6px}
 
 /* first run */

@@ -33,7 +33,7 @@ public static class LinuxInstaller
         {
             try
             {
-                var dir = Path.GetDirectoryName(Environment.ProcessPath ?? "");
+                var dir = Path.GetDirectoryName(AppFile.Current ?? "");
                 return dir != null && Path.GetFullPath(dir) == Path.GetFullPath(AppDir);
             }
             catch { return false; }
@@ -50,7 +50,9 @@ public static class LinuxInstaller
         if (!OperatingSystem.IsLinux()) return new Result(false, "the app-grid install is only available on Linux");
         try
         {
-            var source = Environment.ProcessPath;
+            // From an AppImage the .AppImage is what is copied (and run from
+            // the app grid); the binary inside it lives in a passing mount.
+            var source = AppFile.Current;
             if (string.IsNullOrEmpty(source) || !File.Exists(source))
                 return new Result(false, "cannot find the running binary to copy");
             Directory.CreateDirectory(AppDir);

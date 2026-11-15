@@ -138,6 +138,26 @@ public class DspTests
         Assert.InRange(measured, hz - 3, hz + 3);
     }
 
+    // The microphone path (48 kHz -> 16 kHz): speech up to 7 kHz reaches the
+    // content encoder whole, and hiss above 8 kHz does not fold back into it.
+    [Theory]
+    [InlineData(7000, -1.0, 0.5)]     // passband: within a dB
+    [InlineData(9000, -200, -60)]     // would alias to 7 kHz: at least 60 dB down
+    [InlineData(10000, -200, -60)]
+    public void MicrophoneResamplingKeepsTheBandAndStopsAliasing(double hz, double minDb, double maxDb)
+    {
+        var r = new Resampler(48000, 16000);
+        var input = new float[48000];
+        for (int i = 0; i < input.Length; i++) input[i] = 0.5f * MathF.Sin((float)(2 * Math.PI * hz * i / 48000));
+        var output = new float[r.MaxOutput(input.Length)];
+        int got = r.Process(input, output);
+        double energy = 0;
+        int from = got / 4, to = got * 3 / 4;
+        for (int i = from; i < to; i++) energy += output[i] * output[i];
+        double db = 20 * Math.Log10(Math.Sqrt(energy / (to - from)) / 0.35355 + 1e-12);
+        Assert.InRange(db, minDb, maxDb);
+    }
+
     [Fact]
     public void ResamplerIsSeamlessAcrossChunks()
     {

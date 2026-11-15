@@ -69,6 +69,8 @@ public sealed class VoiceController : IDisposable
 
     // The host supplies the native file dialog (window thread only).
     public Func<string[]?>? PickFiles { get; set; }
+    // The single-file dialog for a voice's .index (argument: the voice's name).
+    public Func<string, string?>? PickIndex { get; set; }
     public event Action? RestartRequested;
     // An update is in place: the host restarts from this program file.
     public event Action<string>? UpdateInstalled;
@@ -100,6 +102,19 @@ public sealed class VoiceController : IDisposable
         // A first run that never touches a setting would otherwise leave no
         // settings file for the boot log to report on.
         lock (_settingsLock) if (!AppSettings.FileExists) _settings.Save();
+        _ = Task.Run(() =>
+        {
+            try { RebuildStaleConversions(); }
+            catch (Exception ex) { ErrorLog.WriteEntry("RebuildStaleConversions", ex); _rebuilding = ""; }
+        });
+        // Linux, once: launching the file from a file manager asks every time
+        // whether to run it; from the app grid it just opens.
+        if (OperatingSystem.IsLinux() && !_settings.AppGridOffered && LinuxInstaller.InstalledAt() == null)
+        {
+            lock (_settingsLock) { _settings.AppGridOffered = true; _settings.Save(); }
+            _send("toast", new { ok = true, msg = "Add Morphonic to your app grid to open it from the app menu, without the file manager asking whether to run it each time (also in Settings → Desktop)",
+                action = new { label = "Add to app grid", send = new { action = "installDesktop" } } });
+        }
         // The first start after "Update now" says so.
         try
         {
@@ -278,8 +293,10 @@ public sealed class VoiceController : IDisposable
                     {
                         // Every file gets its own answer; the last one that
                         // landed is the one adopted (its answer travels with it).
+                        // An .index picked with them goes with that voice.
                         string? arrived = null, arrivedNote = null;
-                        foreach (var file in picked)
+                        var indexes = picked.Where(f => f.EndsWith(".index", StringComparison.OrdinalIgnoreCase)).ToList();
+                        foreach (var file in picked.Except(indexes))
                         {
                             var (ok, message) = VoiceLibrary.Import(file, out var added);
                             if (ok && added != null)
@@ -290,8 +307,35 @@ public sealed class VoiceController : IDisposable
                             }
                             else _send("toast", new { ok, msg = message });
                         }
+                        foreach (var index in indexes) AttachArrivingIndex(index, arrived);
                         Arrived(arrived, arrivedNote);
                     });
+                }
+                break;
+
+            // Voices screen, a voice's row: its .index (feature retrieval).
+            case "addIndex":
+                {
+                    var id = Path.GetFileName(msg["id"]?.ToString() ?? "");
+                    if (!VoiceLibrary.Exists(id)) break;
+                    string? file = null;
+                    try { file = PickIndex?.Invoke(Path.GetFileNameWithoutExtension(id)); }
+                    catch (Exception ex) { ErrorLog.WriteEntry("PickIndex", ex); }
+                    if (string.IsNullOrEmpty(file)) break;
+                    RunOffUiThread(() =>
+                    {
+                        var (ok, message) = VoiceLibrary.AttachIndex(file, id);
+                        _send("toast", new { ok, msg = ok ? Capitalized(message) + IndexNote(id) : message });
+                        AfterIndexChange(id);
+                    });
+                }
+                break;
+
+            case "removeIndex":
+                {
+                    var id = Path.GetFileName(msg["id"]?.ToString() ?? "");
+                    if (VoiceLibrary.RemoveIndex(id)) _send("toast", new { ok = true, msg = $"Index removed from {Path.GetFileNameWithoutExtension(id)}" });
+                    AfterIndexChange(id);
                 }
                 break;
 
@@ -352,14 +396,27 @@ public sealed class VoiceController : IDisposable
                     var name = Path.GetFileName(msg["name"]?.ToString() ?? "");
                     RunOffUiThread(() =>
                     {
-                        var (ok, message) = VoiceLibrary.EndImport(name, out var added);
-                        if (ok && added != null) Arrived(added, message);
-                        else
+                        // One after another, in the order dropped: an .index
+                        // dropped with its voice goes with that voice, which
+                        // must have landed first.
+                        _importGate.Wait();
+                        try
                         {
-                            _send("toast", new { ok, msg = message });
-                            SendVoices();
-                            ConvertNextPending();
+                            var (ok, message) = VoiceLibrary.EndImport(name, out var added);
+                            if (ok && added != null && added.EndsWith(".index", StringComparison.OrdinalIgnoreCase))
+                            {
+                                AttachArrivingIndex(VoiceLibrary.ImportingPath(name), RecentArrival());
+                                VoiceLibrary.AbortImport(name);
+                            }
+                            else if (ok && added != null) Arrived(added, message);
+                            else
+                            {
+                                _send("toast", new { ok, msg = message });
+                                SendVoices();
+                                ConvertNextPending();
+                            }
                         }
+                        finally { _importGate.Release(); }
                     });
                 }
                 break;
@@ -620,6 +677,7 @@ public sealed class VoiceController : IDisposable
                         _settings.CrossfadeMs = Math.Clamp(msg["crossfadeMs"]?.Value<int>() ?? _settings.CrossfadeMs, 20, 200);
                         _settings.NoiseGateDb = Math.Clamp(msg["noiseGateDb"]?.Value<int>() ?? _settings.NoiseGateDb, -60, 0);
                         _settings.RmsMixRate = Math.Clamp(msg["rmsMixRate"]?.Value<double>() ?? _settings.RmsMixRate, 0, 1);
+                        _settings.IndexRate = Math.Clamp(msg["indexRate"]?.Value<double>() ?? _settings.IndexRate, 0, 1);
                         _settings.OutputGainDb = Math.Clamp(msg["outputGainDb"]?.Value<int>() ?? _settings.OutputGainDb, -24, 24);
                         var accel = msg["acceleration"]?.ToString();
                         if (accel is "auto" or "gpu" or "cpu") _settings.Acceleration = accel;
@@ -628,13 +686,13 @@ public sealed class VoiceController : IDisposable
                     }
                     // Pitch and speaker apply live; the buffer geometry
                     // needs a new engine.
-                    bool live = msg["pitch"] != null || msg["speakerId"] != null;
+                    bool live = msg["pitch"] != null || msg["speakerId"] != null || msg["indexRate"] != null;
                     bool geometry = msg["blockMs"] != null || msg["extraMs"] != null || msg["crossfadeMs"] != null ||
                                     msg["noiseGateDb"] != null || msg["rmsMixRate"] != null || msg["outputGainDb"] != null;
                     if (live)
                     {
                         var c = _converter;
-                        if (c != null) { c.PitchSemitones = _settings.PitchSemitones; c.SpeakerId = _settings.SpeakerId; }
+                        if (c != null) { c.PitchSemitones = _settings.PitchSemitones; c.SpeakerId = _settings.SpeakerId; c.IndexRate = (float)_settings.IndexRate; }
                     }
                     SendDevices();
                     // The runtime binds at process start: a changed
@@ -792,6 +850,8 @@ public sealed class VoiceController : IDisposable
             else if (!ModelManager.ComponentsReady()) problem = "The content encoder and pitch model must be downloaded first — see Models";
             else if (_settings.VoiceId.Length == 0) problem = "Choose a voice first — see Voices";
             else if (!VoiceLibrary.Exists(_settings.VoiceId)) problem = $"The voice {_settings.VoiceId} is no longer in the library";
+            else if (string.Equals(_rebuilding, _settings.VoiceId, StringComparison.OrdinalIgnoreCase))
+                problem = $"{VoiceName()} is being rebuilt with this version's fix — try again in a few seconds";
             if (problem != null)
             {
                 _send("state", new { running = false, error = problem });
@@ -819,7 +879,7 @@ public sealed class VoiceController : IDisposable
 
     private VoiceConverter LoadConverter()
     {
-        var key = _settings.VoiceId + "|" + OnnxHost.Label;
+        var key = ConverterKey();
         if (_converter != null && _converterKey == key) return _converter;
         DisposeConverter();
         var encoderPath = ModelManager.PathFor(ModelCatalog.Find(ModelCatalog.EncoderId)!);
@@ -836,13 +896,56 @@ public sealed class VoiceController : IDisposable
             // this run; the CPU always can.
             OnnxHost.DemoteToCpu(ex.Message);
             _send("toast", new { ok = false, msg = $"GPU acceleration failed to start ({ex.Message}) — running on the CPU" });
-            key = _settings.VoiceId + "|" + OnnxHost.Label;
+            key = ConverterKey();
             _converter = BuildConverter(encoderPath, pitchPath, voicePath);
         }
         _converterKey = key;
+        _converter.Index = VoiceLibrary.LoadIndex(_settings.VoiceId, out var indexNote);
+        BootLog.Append("index: " + indexNote);
         BootLog.Append($"loaded {_settings.VoiceId} ({_converter.Voice.SampleRate} Hz, {_converter.Voice.Convention}" +
                        $"{(_converter.Voice.HasSkipHead ? ", tail decode" : ", full decode")}) on {OnnxHost.Label} in {sw.ElapsedMilliseconds} ms");
         return _converter;
+    }
+
+    // What the loaded converter was built from: the voice file and its index
+    // as they are on disk now (a rebuilt or re-indexed voice loads afresh).
+    private string ConverterKey()
+    {
+        static string Stamp(string path) { try { return File.Exists(path) ? File.GetLastWriteTimeUtc(path).Ticks.ToString() : "-"; } catch { return "?"; } }
+        return $"{_settings.VoiceId}|{Stamp(VoiceLibrary.PathFor(_settings.VoiceId))}|{Stamp(VoiceLibrary.IndexPathFor(_settings.VoiceId))}|{OnnxHost.Label}";
+    }
+
+    // Voices converted in the app before 1.0.5 ran with the pretrained
+    // generator's biases (VoiceLibrary.AssemblyGeneration): rebuilt from
+    // their .pth once, in the background, after the window is up.
+    private volatile string _rebuilding = "";
+
+    private void RebuildStaleConversions()
+    {
+        var (rebuild, orphaned) = VoiceLibrary.StaleConversions();
+        foreach (var id in orphaned)
+            BootLog.Append($"rebuild: {id} was converted before 1.0.5 and its .pth is gone — it keeps its old build");
+        if (orphaned.Count > 0)
+            _send("toast", new { ok = false, msg = $"{string.Join(", ", orphaned.Select(Path.GetFileNameWithoutExtension))}: converted by an earlier version, which used some wrong settings for it (it sounds breathier than it should). Import the voice's .pth again to fix it." });
+        if (rebuild.Count == 0) return;
+        _send("toast", new { ok = true, msg = $"Rebuilding {rebuild.Count} voice(s) converted by an earlier version — this version fixes how they sound" });
+        int done = 0;
+        bool activeRebuilt = false;
+        foreach (var id in rebuild)
+        {
+            _rebuilding = id;
+            SendVoices();
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var (ok, message) = VoiceLibrary.Rebuild(id);
+            BootLog.Append($"rebuild: {message} ({sw.ElapsedMilliseconds} ms)");
+            if (ok) { done++; if (string.Equals(id, _settings.VoiceId, StringComparison.OrdinalIgnoreCase)) activeRebuilt = true; }
+            else _send("toast", new { ok = false, msg = "Could not rebuild " + message });
+        }
+        _rebuilding = "";
+        SendVoices();
+        if (done > 0)
+            _send("toast", new { ok = true, msg = $"Rebuilt {done} voice(s): they now use all of their own settings" + (activeRebuilt && IsRunning ? " — restarting the voice" : "") });
+        if (activeRebuilt) RestartIfRunning();
     }
 
     private static VoiceConverter BuildConverter(string encoderPath, string pitchPath, string voicePath)
@@ -885,6 +988,7 @@ public sealed class VoiceController : IDisposable
         if (_closing) { BootLog.Append("start abandoned: the app is closing"); return; }
         converter.PitchSemitones = _settings.PitchSemitones;
         converter.SpeakerId = _settings.SpeakerId;
+        converter.IndexRate = (float)_settings.IndexRate;
         var engine = new RealtimeEngine(converter, new EngineConfig
         {
             BlockMs = _settings.BlockMs,
@@ -1287,6 +1391,7 @@ public sealed class VoiceController : IDisposable
     // the same zip or pick) is converted afterwards.
     private void Arrived(string? id, string? note = null)
     {
+        if (id != null) { _recentArrival = id; _recentArrivalAt = Environment.TickCount64; }
         if (id != null && !id.EndsWith(".onnx", StringComparison.OrdinalIgnoreCase))
         {
             // A checkpoint whose conversion already exists: that is the voice.
@@ -1303,6 +1408,44 @@ public sealed class VoiceController : IDisposable
             SendVoices();
         }
         ConvertNextPending();
+    }
+
+    // A lone .index (dropped, or picked without its voice) belongs to the
+    // voice that arrived with it moments ago, else to the active voice.
+    private readonly SemaphoreSlim _importGate = new(1, 1);
+    private string _recentArrival = "";
+    private long _recentArrivalAt;
+
+    private string? RecentArrival() =>
+        _recentArrival.Length > 0 && Environment.TickCount64 - _recentArrivalAt < 120_000 && VoiceLibrary.Exists(_recentArrival) ? _recentArrival : null;
+
+    private void AttachArrivingIndex(string file, string? withVoice)
+    {
+        var voice = withVoice ?? RecentArrival() ?? (_settings.VoiceId.Length > 0 && VoiceLibrary.Exists(_settings.VoiceId) ? _settings.VoiceId : null);
+        if (voice == null)
+        {
+            _send("toast", new { ok = false, msg = $"{Path.GetFileName(file)}: an index goes with a voice — import the voice first, then add the index from its row in My voices" });
+            return;
+        }
+        var (ok, message) = VoiceLibrary.AttachIndex(file, voice);
+        BootLog.Append($"index {Path.GetFileName(file)} -> {voice}: {message}");
+        _send("toast", new { ok, msg = ok ? Capitalized(message) + IndexNote(voice) : message });
+        AfterIndexChange(voice);
+    }
+
+    private string IndexNote(string voiceId) =>
+        string.Equals(Path.GetFileNameWithoutExtension(voiceId), Path.GetFileNameWithoutExtension(_settings.VoiceId), StringComparison.OrdinalIgnoreCase) && IsRunning
+            ? " — restarting the voice to use it" : "";
+
+    private static string Capitalized(string s) => s.Length == 0 ? s : char.ToUpperInvariant(s[0]) + s[1..];
+
+    // The voice reloads with (or without) its index when it is the one running.
+    private void AfterIndexChange(string voiceId)
+    {
+        SendVoices();
+        SendDevices();
+        if (string.Equals(Path.GetFileNameWithoutExtension(voiceId), Path.GetFileNameWithoutExtension(_settings.VoiceId), StringComparison.OrdinalIgnoreCase))
+            RestartIfRunning();
     }
 
     private void FinishDownload()
@@ -1445,6 +1588,8 @@ public sealed class VoiceController : IDisposable
             crossfadeMs = _settings.CrossfadeMs,
             noiseGateDb = _settings.NoiseGateDb,
             rmsMixRate = _settings.RmsMixRate,
+            indexRate = _settings.IndexRate,
+            voiceHasIndex = VoiceLibrary.HasIndex(_settings.VoiceId),
             outputGainDb = _settings.OutputGainDb,
             acceleration = _settings.Acceleration,
             accelActive = OnnxHost.Label,
@@ -1464,9 +1609,10 @@ public sealed class VoiceController : IDisposable
             {
                 id = v.Id, name = v.Name, kind = v.Kind, sizeBytes = v.SizeBytes, sampleRate = v.SampleRate,
                 speakers = v.Speakers, skipHead = v.SkipHead, source = v.Source,
+                index = VoiceLibrary.HasIndex(v.Id),
             }),
             active = _settings.VoiceId,
-            converting = _converting,
+            converting = _rebuilding.Length > 0 ? _rebuilding : _converting,
             folder = VoiceLibrary.Dir,
             highlight = Interlocked.Exchange(ref _highlight, ""),   // shown once: the row to scroll to
         });

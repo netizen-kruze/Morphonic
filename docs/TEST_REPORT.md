@@ -821,3 +821,77 @@ SHA-256 digests of the five files equal the local ones. Against the live
 release: the 1.0.4 exe's `--update` says it is the latest; a build of the
 same code stamped 1.0.3 updated itself from GitHub with `--update`, and the
 exe it left in place is byte-identical to the released 1.0.4.
+
+# 1.0.5: breathy voices, index files, AppImage — 2026-11-15
+
+## Why converted voices sounded breathy
+
+Measured, not guessed: speech (a CC BY-SA recording from Wikimedia
+Commons, 48 kHz) through the SpongeBob RVC v2 voice from Hugging Face —
+the same file as the user's `model.pth` — scored by the harmonics-to-noise
+ratio of voiced frames and the energy above 4 kHz.
+
+- The resampler (48 → 16 kHz, 32 taps) passed 9 kHz at only −20 dB, so hiss
+  folded into 6–8 kHz, and dulled 7 kHz by 4 dB. Real, but not the cause:
+  through it or through soxr the output scored the same (10.8 vs 10.75 dB).
+  Fixed anyway: 144 taps for 48 → 16 kHz (9 kHz now −92 dB, 7 kHz −0.2 dB).
+- Loudness following and the index made no measurable difference either.
+- The cause: **in-app `.pth` conversion**. With the voice's sampling
+  switched off on both sides (Random*Like nodes → zeros), RVC's own
+  synthesizer class and a direct PyTorch export agree exactly (SNR 227 dB),
+  but the in-app conversion did not (−3 dB). 131 tensors differed — every
+  bias plus `conv_post.weight`, `noise_convs.3.weight` and the source
+  module's linear layer. `make_templates.py` kept tensors under 1 KB inside
+  the template, and the generic `rvc-v2-32k/40k/48k` templates were made
+  from RVC's pretrained generators, so every voice converted in the app ran
+  with its own large weights and the pretrained biases. The output lost
+  about 7 dB above 4 kHz (−24.5 dB against the input's −18.5): dull and
+  airy.
+- Fix: `make_templates.py relink` moved those 131 tensors into the recipes
+  (matched by name; the one renamed `onnx::MatMul_6171` by elimination),
+  and `template --voice` now does so itself. The assembler's `--check`
+  compares with sampling off and fails on a difference. Voices converted
+  before carry no `"assembly": 2` in their metadata and are rebuilt from
+  their `.pth` on the first start of 1.0.5.
+
+| Check | Result |
+|---|---|
+| 32 kHz: SpongeBob assembled vs a direct export, sampling off | 0 of 353 tensors differ, output max diff 5.5e-06 |
+| 40 kHz and 48 kHz: a copy of RVC's pretrained generator with every tensor nudged 2 %, assembled vs exported | 0 differ; 2.9e-06 and 1.0e-06 |
+| The app's C# assembly of SpongeBob vs the Python reference | same SHA-256 (`06d9d556…`) |
+| The sample voice's pinned hash (its template is unchanged) | reproduced |
+| Energy above 4 kHz, input / old build / fixed build (11 s clip, 48 kHz path) | −18.9 / −23.8 / −16.2 dB |
+
+## Index files
+
+`Rvc/FeatureIndex.cs` reads FAISS's IVF-Flat and flat L2 files directly and
+does RVC's retrieval (8 nearest among the probed lists, weights 1/d²,
+blended by the index rate on the frames after the skipped context, before
+the 10 ms upsampling — as `rtrvc.py`).
+
+| Check | Result |
+|---|---|
+| Against FAISS 1.16 itself: SpongeBob's real index (280 lists, nprobe 1), a sparse list table (nprobe 64), a flat index | max difference < 1e-3 on every query |
+| Self-contained: IVF with full and sparse list tables vs brute force; junk, v1 (256-wide) and truncated files refused | pass |
+| Cost: SpongeBob's index loads in 22 ms; a 250 ms block takes the same time with and without it | 170 vs 170 ms per block (CPU) |
+| Library: sibling index of a picked `.pth` ("added" over "trained"), zip pairing per folder, Hugging Face choice, deletion, orphan names, streamed `.index` | 6 new tests pass |
+| Fedora 44, the AppImage, hidden display: Add index… through the GTK dialog, Peter Griffin's `model.pth` imported with the `added_…` index beside it (named Peter, converted with `"assembly":2`), Index slider 75 % | pass |
+
+## AppImage
+
+`tools/build-appimage.sh` (runtime 20251108 pinned by SHA-256, zstd,
+fixed times): the same binary gives the same file, byte for byte.
+`AppFile.Current` is the `.AppImage` when Morphonic runs from one (believed
+only when the binary sits in `$APPDIR`), and restart, update, update-check
+and Add to app grid use it.
+
+| Check (Fedora 44, FUSE 3) | Result |
+|---|---|
+| Packed twice from one binary | identical SHA-256 |
+| Starts from the AppImage; `exe:` names it; old SpongeBob conversion rebuilt (500 ms); app-grid offer made once | pass |
+| Update now to a 1.0.6 AppImage from a local feed | file replaced in place, restarted through it, "updated from 1.0.5 to 1.0.6" |
+| The old runtime and mount after the restart | first try: kept alive by the new app, which had inherited the runtime's pipe; fixed by marking inherited descriptors close-on-exec at start; then gone at once (one mount) |
+| `--install` from the AppImage, then the menu entry's Exec | copies the AppImage (`AI\x02`), runs from it; nothing left after quitting |
+
+Unit tests: 93 (25 new). Not run here: the Windows window walkthrough (the
+user's own Morphonic was open), drag and drop onto the Linux window.

@@ -3,8 +3,9 @@
 # `sudo dnf install dotnet-sdk-9.0`): one self-contained linux-x64 file —
 # the .NET runtime, the interface and the CPU inference runtime are all
 # inside it — written to releases/Morphonic-<version>-linux-x64. The binary
-# installs itself into the app grid (--install), so nothing else ships
-# beside it. GPU acceleration is downloaded in-app.
+# installs itself into the app grid (--install). The same file is also
+# packed as an AppImage (tools/build-appimage.sh, needs squashfs-tools).
+# GPU acceleration is downloaded in-app.
 #
 #   ./build.sh                       # Release
 #   ./build.sh Debug
@@ -38,6 +39,14 @@ if [ -n "$OFFLINE" ]; then
   chmod 0755 "$OFF"
   echo "==> Done: $OFF ($(du -h "$OFF" | cut -f1), models inside)"
   echo "    SHA-256: $(sha256sum "$OFF" | cut -d' ' -f1)"
+fi
+# The same files as AppImages (needs squashfs-tools).
+if command -v mksquashfs >/dev/null; then
+  for f in "$OUT" ${OFFLINE:+"$OFF"}; do
+    tools/build-appimage.sh "$f" "$f.AppImage" "$VER"
+  done
+else
+  echo "==> No AppImage: mksquashfs not found (sudo dnf install squashfs-tools)"
 fi
 # releases/SHA256SUMS.txt: every release file of this version, for
 # `sha256sum -c` next to a download.

@@ -143,11 +143,15 @@ def cmd_template(args):
 
     recipe = []
     keep = []
+    small = []
     external_bytes = 0
     for t in m.graph.initializer:
         a = numpy_helper.to_array(t)
         if a.nbytes < INLINE_LIMIT or t.data_type != FLOAT:
-            keep.append(t)
+            # A voice template serves every voice of its configuration, so
+            # a small tensor of the checkpoint must come from the user's
+            # checkpoint too, not stay with this one's values (decided below).
+            (small if args.voice and t.data_type == FLOAT else keep).append(t)
             continue
         hit = None
         for k in by_size.get(a.size, []):
@@ -173,6 +177,10 @@ def cmd_template(args):
             hit["dimsFromSource"] = True
         recipe.append({"name": t.name, "dims": list(a.shape), **hit})
         external_bytes += a.nbytes
+    if small:
+        linked, inline = link_small(small, state, recipe)
+        recipe.extend(linked)
+        keep.extend(inline)
     del m.graph.initializer[:]
     m.graph.initializer.extend(keep)
     if args.voice:
@@ -198,6 +206,83 @@ def cmd_template(args):
         json.dump(meta, f, indent=1)
     print("template %s: %s bytes inline (%d small tensors); %d tensors / %s bytes from the checkpoint %s; %.1f s"
           % (template, format(os.path.getsize(template), ","), len(keep), len(recipe), format(external_bytes, ","), ops, time.time() - t0))
+
+
+def link_small(small, state, recipe):
+    """The small float initializers of a voice template that are checkpoint
+    tensors, as recipe entries; the rest (graph constants) stay inline.
+    Matched by name (the exporter keeps parameter names), and a renamed one
+    ("onnx::MatMul_…", a transposed Linear) by elimination: the only
+    checkpoint tensor of its size that nothing else uses. Values are never
+    used to match: a small tensor's values say nothing about which voice
+    tensor it is (zeros, ones and single numbers recur)."""
+    from onnx import numpy_helper
+    used = {s for e in recipe for s in e["src"]}
+    linked, inline, unnamed = [], [], []
+    for t in small:
+        a = numpy_helper.to_array(t)
+        if t.name in state and state[t.name].size == a.size:
+            linked.append({"name": t.name, "dims": list(a.shape), "op": "copy", "src": [t.name]})
+            used.add(t.name)
+        else:
+            unnamed.append((t, a))
+    for t, a in unnamed:
+        free = [k for k, v in state.items() if k not in used and v.size == a.size and not k.startswith("enc_q.")
+                and not k.endswith(("weight_g", "weight_v"))]
+        if len(free) != 1:
+            inline.append(t)          # a graph constant (or nothing decidable): stays as it is
+            continue
+        k = free[0]
+        s = state[k]
+        op = "transpose" if s.ndim == 2 and a.ndim == 2 and s.shape != a.shape and s.T.shape == a.shape else "copy"
+        if s.ndim == 2 and a.ndim == 2 and s.shape == a.shape and s.shape[0] == s.shape[1] and s.shape[0] > 1:
+            raise SystemExit("cannot tell whether %s is %s or its transpose" % (t.name, k))
+        linked.append({"name": t.name, "dims": list(a.shape), "op": op, "src": [k]})
+        used.add(k)
+    return linked, inline
+
+
+def cmd_relink(args):
+    """Fixes an existing voice template: its small checkpoint tensors move from
+    inline (the template source's values) to the recipe (the user's)."""
+    import onnx
+    from onnx import numpy_helper
+    with open(args.recipe, encoding="utf-8") as f:
+        meta = json.load(f)
+    template = os.path.join(os.path.dirname(args.recipe), meta["template"])
+    if sha256_of(template) != meta["templateSha256"]:
+        raise SystemExit("the template does not match its recipe")
+    state, _ = load_state(args.checkpoint)
+    m = onnx.load(template)
+    small = [t for t in m.graph.initializer if t.data_type == FLOAT]
+    other = [t for t in m.graph.initializer if t.data_type != FLOAT]
+    linked, inline = link_small(small, state, meta["tensors"])
+    del m.graph.initializer[:]
+    m.graph.initializer.extend(other + inline)
+    onnx.save(m, template)
+    meta["tensors"].extend(linked)
+    meta["templateSha256"] = sha256_of(template)
+    with open(args.recipe, "w", encoding="utf-8") as f:
+        json.dump(meta, f, indent=1)
+    print("%s: %d small tensors now come from the checkpoint (%s); %d stay inline: %s"
+          % (os.path.basename(template), len(linked), ", ".join(sorted({e["op"] for e in linked})), len(inline), [t.name for t in inline]))
+
+
+def deterministic_session(path):
+    """An ONNX Runtime session of a voice with its sampling switched off:
+    every Random*Like node yields zeros, so two files that hold the same
+    function give the same audio and can be compared exactly."""
+    import onnx
+    import onnxruntime as ort
+    m = onnx.load(path)
+    for n in m.graph.node:
+        if n.op_type in ("RandomNormalLike", "RandomUniformLike"):
+            x = n.input[0]
+            n.op_type = "Sub"
+            del n.attribute[:]
+            del n.input[:]
+            n.input.extend([x, x])
+    return ort.InferenceSession(m.SerializeToString(), providers=["CPUExecutionProvider"])
 
 
 # -- assemble (what the app does) --------------------------------------
@@ -230,9 +315,10 @@ def cmd_assemble(args):
     size, digest = assemble(args.recipe, args.checkpoint, args.output)
     print("assembled %s: %s bytes, SHA-256 %s (%.1f s)" % (args.output, format(size, ","), digest, time.time() - t0))
     if args.check:
-        import onnxruntime as ort
-        a = ort.InferenceSession(args.output, providers=["CPUExecutionProvider"])
-        b = ort.InferenceSession(args.check, providers=["CPUExecutionProvider"])
+        # Sampling off on both sides: the same function must give the same
+        # output, so a wrong tensor cannot hide in the noise.
+        a = deterministic_session(args.output)
+        b = deterministic_session(args.check)
         rng = np.random.default_rng(7)
         feed = {}
         for i in a.get_inputs():
@@ -254,12 +340,9 @@ def cmd_assemble(args):
         ya = a.run(None, feed)[0]
         yb = b.run(None, feed)[0]
         d = float(np.abs(ya - yb).max())
-        print("check vs %s: output %s, max |diff| %.3e (output peak %.3f)" % (args.check, ya.shape, d, float(np.abs(yb).max())))
-        if "skip_head" in feed:
-            # the voice samples noise inside (randn_like), so two runs of
-            # the same file differ too: that is the floor to compare with
-            yb2 = b.run(None, feed)[0]
-            print("  (the export's own run-to-run difference: %.3e)" % float(np.abs(yb - yb2).max()))
+        print("check vs %s (sampling off): output %s, max |diff| %.3e (output peak %.3f)" % (args.check, ya.shape, d, float(np.abs(yb).max())))
+        if d > 1e-3:
+            raise SystemExit("the assembled model does not compute what the export does")
 
 
 def main():
@@ -280,6 +363,10 @@ def main():
     a.add_argument("-o", "--output", required=True)
     a.add_argument("--check", help="an export to compare the assembled model's output with")
     a.set_defaults(fn=cmd_assemble)
+    r = sub.add_parser("relink", help="fix a voice template made before small tensors were read from the checkpoint")
+    r.add_argument("recipe")
+    r.add_argument("checkpoint", help="any voice checkpoint of the template's configuration (only names and sizes are used)")
+    r.set_defaults(fn=cmd_relink)
     args = p.parse_args()
     args.fn(args)
 

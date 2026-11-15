@@ -50,6 +50,10 @@ public static class FileConvert
                 new VoiceModel(VoiceLibrary.PathFor(settings.VoiceId)));
             converter.PitchSemitones = pitchArg == int.MinValue ? settings.PitchSemitones : pitchArg;
             converter.SpeakerId = settings.SpeakerId;
+            converter.Index = VoiceLibrary.LoadIndex(settings.VoiceId, out var indexNote);
+            converter.IndexRate = (float)(double.TryParse(Arg(args, "--index-rate"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ir)
+                ? Math.Clamp(ir, 0, 1) : settings.IndexRate);
+            Console.WriteLine($"index: {indexNote}{(converter.Index != null ? $"; rate {converter.IndexRate:0.00}" : "")}");
             Console.WriteLine($"voice: {settings.VoiceId} ({converter.SampleRate} Hz) loaded in {sw.ElapsedMilliseconds} ms; pitch {converter.PitchSemitones:+0;-0;0} st");
             using var engine = new RealtimeEngine(converter, new EngineConfig
             {

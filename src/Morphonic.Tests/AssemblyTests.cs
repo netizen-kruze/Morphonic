@@ -136,6 +136,45 @@ public class AssemblyTests
         }
     }
 
+    // The generic templates serve every user voice of their sample rate, so
+    // every weight must come from the user's checkpoint. Until 1.0.5 the
+    // small ones (all biases and three small weights, 131 tensors) stayed
+    // inside the template with the values of RVC's pretrained generator it
+    // was made from, and every voice converted in the app ran with them.
+    [Theory]
+    [InlineData("rvc-v2-32k")]
+    [InlineData("rvc-v2-40k")]
+    [InlineData("rvc-v2-48k")]
+    public void VoiceTemplatesTakeEveryTensorFromTheVoice(string name)
+    {
+        var r = ModelAssembler.LoadRecipe(name);
+        var names = r.Tensors.Select(t => t.Name).ToHashSet();
+        Assert.Equal(353, names.Count);
+        foreach (var small in new[] { "dec.conv_post.weight", "dec.m_source.l_linear.bias", "dec.noise_convs.3.weight",
+                                      "dec.resblocks.0.convs1.0.bias", "dec.ups.3.bias", "flow.flows.0.enc.in_layers.0.bias",
+                                      "enc_p.encoder.norm_layers_1.0.gamma", "enc_p.proj.bias" })
+            Assert.Contains(small, names);
+    }
+
+    // With MORPHONIC_TEST_VOICE_ASM = "<rate>|<voice .pth>|<SHA-256>" (the
+    // hash from `tools/make_templates.py assemble`, whose --check compares
+    // with a direct PyTorch export), the app's assembly of a real voice
+    // must give the same bytes.
+    [Fact]
+    public void AUserVoiceAssemblesAsThePythonReferenceDoes()
+    {
+        var spec = Environment.GetEnvironmentVariable("MORPHONIC_TEST_VOICE_ASM");
+        if (string.IsNullOrEmpty(spec)) return;
+        var parts = spec.Split('|');
+        var outPath = Path.Combine(Path.GetTempPath(), "morphonic-test-voice.onnx");
+        try
+        {
+            var (_, hash) = ModelAssembler.Assemble($"rvc-v2-{parts[0]}", parts[1], outPath);
+            Assert.Equal(parts[2], hash);
+        }
+        finally { File.Delete(outPath); }
+    }
+
     [Fact]
     public void AssembledModelsReproduceThePinnedHashes()
     {

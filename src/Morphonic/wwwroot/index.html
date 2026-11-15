@@ -48,7 +48,10 @@
         <svg viewBox="0 0 24 24" id="icoStop" class="hide"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
         <span id="btnStartStopText">Start voice</span>
       </button>
-      <div class="ctl pitchctl"><label for="rngPitch">Pitch <output id="outPitch">0 st</output></label><input type="range" id="rngPitch" min="-24" max="24" step="1" value="0"></div>
+      <div class="sliders">
+        <div class="ctl pitchctl"><label for="rngPitch">Pitch <output id="outPitch">0 st</output></label><input type="range" id="rngPitch" min="-24" max="24" step="1" value="0"></div>
+        <div class="ctl pitchctl indexctl" id="ctlIndex"><label for="rngIndex">Index <output id="outIndex">75%</output></label><input type="range" id="rngIndex" min="0" max="100" step="5" value="75"></div>
+      </div>
       <span class="flex1"></span>
       <div class="ctl"><label for="selInput">Microphone</label><select id="selInput"></select></div>
       <div class="ctl"><label for="selOutput">Output</label><select id="selOutput"></select></div>
@@ -117,7 +120,7 @@
           <h3 class="h-flex">From a file on this PC <span class="flex1"></span><button class="chipbtn amber" id="btnImport">Import voice…</button></h3>
           <div class="dropzone" id="dropZone" aria-label="Drop voice files here">
             <b>Drop voice files here</b>
-            <span>.pth, .onnx, or the .zip a voice library gave you — the .index file is ignored</span>
+            <span>.pth, .onnx, or the .zip a voice library gave you — and the voice's .index, if it has one</span>
             <span class="mono" id="dropStatus" hidden></span>
           </div>
         </div>

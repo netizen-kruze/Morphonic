@@ -49,6 +49,7 @@ internal static class Program
     private static int Main(string[] args)
     {
         _bootTick = Environment.TickCount64;
+        LinuxHost.KeepInheritedDescriptorsToOurselves();
         InstallCrashHandlers();
         if (args.Any(a => a is "--help" or "-h" or "--bench" or "--install-gpu" or "--fetch-models" or "--pack-offline" or "--install" or "--uninstall" or "--convert" or "--report" or "--update")) WindowsHost.AttachParentConsole();
         if (args.Contains("--help") || args.Contains("-h")) { Console.WriteLine(Usage); return 0; }
@@ -231,8 +232,10 @@ internal static class Program
             }
             catch (Exception ex) { ErrorLog.WriteEntry("SignalHandlers", ex); }
         }
-        ctrl.PickFiles = () => _window.ShowOpenFile("Choose an RVC voice (.pth, .onnx, or the .zip a voice library gave you)", null, true,
+        ctrl.PickFiles = () => _window.ShowOpenFile("Choose an RVC voice (.pth, .onnx, or the .zip a voice library gave you) and its .index", null, true,
             VoiceFileFilters(OperatingSystem.IsLinux()));
+        ctrl.PickIndex = voice => _window.ShowOpenFile($"Choose the .index that goes with {voice}", null, false,
+            new[] { ("RVC index (.index)", new[] { "*.index" }) })?.FirstOrDefault();
         ctrl.RestartRequested += () => RestartApp();
         ctrl.UpdateInstalled += exe => RestartApp(exe);
         ctrl.ArmSafeBoot(unfinished != null);
@@ -514,12 +517,13 @@ internal static class Program
     internal static (string Name, string[] Extensions)[] VoiceFileFilters(bool linux) => linux
         ? new[]
         {
-            ("All files (pick a .pth, .onnx or .zip voice)", new[] { "*" }),
+            ("All files (pick a .pth, .onnx or .zip voice, and its .index)", new[] { "*" }),
             ("RVC checkpoint (.pth)", new[] { "*.pth" }),
             ("ONNX voice (.onnx)", new[] { "*.onnx" }),
             ("Voice library zip (.zip)", new[] { "*.zip" }),
+            ("Voice index (.index)", new[] { "*.index" }),
         }
-        : new[] { ("RVC voice", new[] { "*.pth", "*.onnx", "*.zip" }) };
+        : new[] { ("RVC voice and index", new[] { "*.pth", "*.onnx", "*.zip", "*.index" }) };
 
     private static PosixSignalRegistration? _sigterm, _sigint, _sighup;
     private static VoiceController? _controller;
@@ -581,12 +585,14 @@ internal static class Program
     // load time): start a fresh process that waits for this one, then leave.
     // After an update `exe` names the program file as it was before the
     // swap (the running process's own path may by now point elsewhere).
+    // From an AppImage it is the .AppImage: the binary's mount goes away
+    // when this process exits.
     private static void RestartApp(string? exe = null)
     {
         if (_exiting) return;
         try
         {
-            exe ??= Environment.ProcessPath ?? throw new InvalidOperationException("no process path");
+            exe ??= AppFile.Current ?? throw new InvalidOperationException("no process path");
             var psi = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe) ?? "" };
             // The new process keeps this one's arguments (--data-dir, test
             // hooks) apart from a previous --after, which is replaced.

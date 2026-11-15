@@ -232,8 +232,8 @@ public class VoiceLibraryTests
         var linux = Program.VoiceFileFilters(linux: true);
         Assert.All(linux, f => Assert.Single(f.Extensions));
         Assert.Equal("*", linux[0].Extensions[0]);   // first: every file, nothing hidden
-        Assert.Equal(new[] { "*.pth", "*.onnx", "*.zip" }, linux.Skip(1).Select(f => f.Extensions[0]));
-        Assert.Equal(new[] { "*.pth", "*.onnx", "*.zip" }, Program.VoiceFileFilters(linux: false).Single().Extensions);
+        Assert.Equal(new[] { "*.pth", "*.onnx", "*.zip", "*.index" }, linux.Skip(1).Select(f => f.Extensions[0]));
+        Assert.Equal(new[] { "*.pth", "*.onnx", "*.zip", "*.index" }, Program.VoiceFileFilters(linux: false).Single().Extensions);
     }
 
     [Fact]
@@ -329,5 +329,174 @@ public class VoiceLibraryTests
             Assert.False(VoiceLibrary.EndImport("gone.pth").Ok);
         }
         finally { Directory.Delete(dir, true); }
+    }
+
+    private static bool SameBytes(string a, string b) => File.ReadAllBytes(a).AsSpan().SequenceEqual(File.ReadAllBytes(b));
+
+    [Fact]
+    public void APickedVoiceBringsTheIndexBesideIt()
+    {
+        var dir = TempData();
+        try
+        {
+            var src = Path.Combine(dir, "picked", "SpongeBob");
+            Directory.CreateDirectory(src);
+            File.WriteAllBytes(Path.Combine(src, "model.pth"), new byte[] { 1, 2, 3 });
+            var added = Path.Combine(src, "added_IVF280_Flat_nprobe_1_SpongeBob_v2.index");
+            FeatureIndexTests.WriteSmallIndex(added, 1f);
+            FeatureIndexTests.WriteSmallIndex(Path.Combine(src, "trained_IVF280_Flat_nprobe_1_SpongeBob_v2.index"), 2f);
+            var (ok, message) = VoiceLibrary.Import(Path.Combine(src, "model.pth"), out var id);
+            Assert.True(ok, message);
+            Assert.Equal("SpongeBob.pth", id);
+            Assert.Contains("with its index", message);
+            Assert.True(VoiceLibrary.HasIndex("SpongeBob.onnx"));                 // the conversion shares it
+            Assert.True(SameBytes(added, VoiceLibrary.IndexPathFor(id!)));      // the "added" one, not "trained"
+
+            // a voice picked out of Downloads takes no index that does not name it
+            var downloads = Path.Combine(dir, "Downloads");
+            Directory.CreateDirectory(downloads);
+            File.WriteAllBytes(Path.Combine(downloads, "Gollum.pth"), new byte[] { 4 });
+            FeatureIndexTests.WriteSmallIndex(Path.Combine(downloads, "added_Someone_Else_v2.index"), 3f);
+            Assert.True(VoiceLibrary.Import(Path.Combine(downloads, "Gollum.pth"), out var g).Ok);
+            Assert.False(VoiceLibrary.HasIndex(g!));
+            FeatureIndexTests.WriteSmallIndex(Path.Combine(downloads, "added_IVF_Gollum_v2.index"), 4f);
+            File.WriteAllBytes(Path.Combine(downloads, "Gollum.pth"), new byte[] { 4 });
+            var (ok2, again) = VoiceLibrary.Import(Path.Combine(downloads, "Gollum.pth"), out _);
+            Assert.True(ok2);
+            Assert.Contains("already in your library with its index", again);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void AZipPairsEachIndexWithTheVoiceInItsFolder()
+    {
+        var dir = TempData();
+        try
+        {
+            var ia = Path.Combine(dir, "a.index"); var ib = Path.Combine(dir, "b.index");
+            FeatureIndexTests.WriteSmallIndex(ia, 1f);
+            FeatureIndexTests.WriteSmallIndex(ib, 2f);
+            var zip = Path.Combine(dir, "Two voices.zip");
+            using (var z = ZipFile.Open(zip, ZipArchiveMode.Create))
+            {
+                using (var s = z.CreateEntry("Alpha/Alpha.pth").Open()) s.Write(new byte[] { 1 });
+                z.CreateEntryFromFile(ia, "Alpha/added_IVF1_Flat_Alpha_v2.index");
+                using (var s = z.CreateEntry("Beta/Beta.pth").Open()) s.Write(new byte[] { 2 });
+                z.CreateEntryFromFile(ib, "Beta/added_IVF1_Flat_Beta_v2.index");
+            }
+            var (ok, message) = VoiceLibrary.Import(zip);
+            Assert.True(ok, message);
+            Assert.True(SameBytes(ia, VoiceLibrary.IndexPathFor("Alpha.pth")));
+            Assert.True(SameBytes(ib, VoiceLibrary.IndexPathFor("Beta.pth")));
+            Assert.DoesNotContain(Directory.GetFiles(VoiceLibrary.Dir), f => f.EndsWith(".importing"));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void AnIndexGoesWithItsVoiceAndIsNeverHandedToANewcomer()
+    {
+        var dir = TempData();
+        try
+        {
+            Directory.CreateDirectory(VoiceLibrary.Dir);
+            File.WriteAllBytes(Path.Combine(VoiceLibrary.Dir, "Nova.pth"), new byte[] { 1 });
+            File.WriteAllBytes(Path.Combine(VoiceLibrary.Dir, "Nova.onnx"), new byte[] { 2 });
+            var idx = Path.Combine(dir, "x.index");
+            FeatureIndexTests.WriteSmallIndex(idx, 1f);
+            Assert.True(VoiceLibrary.AttachIndex(idx, "Nova.onnx").Ok);
+            Assert.True(VoiceLibrary.Delete("Nova.onnx"));
+            Assert.True(VoiceLibrary.HasIndex("Nova.pth"));     // the checkpoint is still there
+            Assert.True(VoiceLibrary.Delete("Nova.pth"));
+            Assert.False(File.Exists(VoiceLibrary.IndexPathFor("Nova.pth")));
+
+            // an index left behind (its voice deleted by hand) keeps its name from a newcomer
+            FeatureIndexTests.WriteSmallIndex(Path.Combine(VoiceLibrary.Dir, "Echo.index"), 1f);
+            Assert.Equal("Echo 2.pth", VoiceLibrary.FreeName("Echo.pth", Path.Combine(dir, "nothing")));
+
+            // not an index: refused, nothing attached
+            File.WriteAllText(Path.Combine(dir, "junk.index"), "junk");
+            File.WriteAllBytes(Path.Combine(VoiceLibrary.Dir, "Mira.onnx"), new byte[] { 3 });
+            Assert.False(VoiceLibrary.AttachIndex(Path.Combine(dir, "junk.index"), "Mira.onnx").Ok);
+            Assert.False(VoiceLibrary.HasIndex("Mira.onnx"));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void AStreamedIndexWaitsToBeAttached()
+    {
+        var dir = TempData();
+        try
+        {
+            var idx = Path.Combine(dir, "src.index");
+            FeatureIndexTests.WriteSmallIndex(idx, 1f);
+            var bytes = File.ReadAllBytes(idx);
+            Assert.True(VoiceLibrary.BeginImport("added_x.index", bytes.Length).Ok);
+            Assert.True(VoiceLibrary.AppendImport("added_x.index", bytes).Ok);
+            var (ok, _) = VoiceLibrary.EndImport("added_x.index", out var added);
+            Assert.True(ok);
+            Assert.Equal("added_x.index", added);
+            Assert.True(File.Exists(VoiceLibrary.ImportingPath("added_x.index")));   // for the controller to attach
+            Assert.Empty(VoiceLibrary.Scan());                                          // never listed as a voice
+
+            Assert.True(VoiceLibrary.BeginImport("bad.index", 4).Ok);
+            Assert.True(VoiceLibrary.AppendImport("bad.index", new byte[] { 1, 2, 3, 4 }).Ok);
+            Assert.False(VoiceLibrary.EndImport("bad.index", out _).Ok);
+            Assert.False(File.Exists(VoiceLibrary.ImportingPath("bad.index")));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    // An ONNX file that holds only metadata_props: enough for the reader.
+    private static void WriteMetadataOnly(string path, string json)
+    {
+        static byte[] Field(int number, byte[] payload)
+        {
+            var bytes = new List<byte> { (byte)(number << 3 | 2) };
+            int n = payload.Length;
+            while (n >= 0x80) { bytes.Add((byte)(n | 0x80)); n >>= 7; }
+            bytes.Add((byte)n);
+            bytes.AddRange(payload);
+            return bytes.ToArray();
+        }
+        var entry = Field(1, System.Text.Encoding.UTF8.GetBytes("morphonic")).Concat(Field(2, System.Text.Encoding.UTF8.GetBytes(json))).ToArray();
+        File.WriteAllBytes(path, Field(14, entry));
+    }
+
+    [Fact]
+    public void VoicesConvertedBeforeTheTemplateFixAreFound()
+    {
+        var dir = TempData();
+        try
+        {
+            Directory.CreateDirectory(VoiceLibrary.Dir);
+            string P(string n) => Path.Combine(VoiceLibrary.Dir, n);
+            WriteMetadataOnly(P("Old.onnx"), "{\"format\":\"morphonic-rvc-voice\",\"exporter\":\"in-app\",\"sr\":40000}");
+            File.WriteAllBytes(P("Old.pth"), new byte[] { 1 });
+            WriteMetadataOnly(P("Lost.onnx"), "{\"format\":\"morphonic-rvc-voice\",\"exporter\":\"in-app\",\"sr\":40000}");
+            WriteMetadataOnly(P("New.onnx"), "{\"format\":\"morphonic-rvc-voice\",\"exporter\":\"in-app\",\"assembly\":2}");
+            File.WriteAllBytes(P("New.pth"), new byte[] { 1 });
+            WriteMetadataOnly(P("Python.onnx"), "{\"format\":\"morphonic-rvc-voice\",\"exporter\":\"morphonic_export.py\"}");
+            File.WriteAllBytes(P("Plain.onnx"), new byte[] { 8, 1 });
+            var (rebuild, orphaned) = VoiceLibrary.StaleConversions();
+            Assert.Equal(new[] { "Old.onnx" }, rebuild);
+            Assert.Equal(new[] { "Lost.onnx" }, orphaned);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void FindVoicesFetchesTheIndexThatGoesWithTheVoice()
+    {
+        HubFile F(string p, long size = 10) => new(p, size, null);
+        // one voice, its index in the root: taken; "added" over "trained"
+        Assert.Equal("added_IVF_x_v2.index", VoiceHub.PickIndex(new[] { F("model.pth"), F("trained_IVF_x_v2.index", 99), F("added_IVF_x_v2.index") }, "model.pth")!.Path);
+        // several voices: only the index in the voice's own folder
+        var many = new[] { F("a/model.pth"), F("a/a.index"), F("b/model.pth"), F("b/b.index") };
+        Assert.Equal("b/b.index", VoiceHub.PickIndex(many, "b/model.pth")!.Path);
+        Assert.Null(VoiceHub.PickIndex(new[] { F("a/model.pth"), F("b/model.pth"), F("b/b.index") }, "a/model.pth"));
+        Assert.Null(VoiceHub.PickIndex(new[] { F("model.pth") }, "model.pth"));
     }
 }

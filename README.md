@@ -26,14 +26,18 @@ Get the latest release from the **Releases** page:
 - `Morphonic-<version>-win-x64.zip` — a single `Morphonic.exe`, no installer. The exe
   is not code-signed, so Windows SmartScreen may warn on first run — choose
   **More info → Run anyway**.
-- `Morphonic-<version>-linux-x64` — one file, the whole app (the .NET runtime,
-  the interface and the CPU inference runtime are inside).
+- `Morphonic-<version>-linux-x64.AppImage` — the Linux app as an AppImage:
+  one file, the whole app (the .NET runtime, the interface and the CPU
+  inference runtime are inside). The one to pick on Linux.
+- `Morphonic-<version>-linux-x64` — the same app as a bare binary, for
+  machines without FUSE (an AppImage mounts itself with it; Fedora and
+  Ubuntu have it out of the box).
 
 Each release lists the files' SHA-256; the running app shows its version
 under **Settings → About**.
 
-**Offline variants** (`...-offline.zip` / `...-linux-x64-offline`, about
-900 MB) carry the three model files inside the binary for machines without
+**Offline variants** (`...-offline.zip` / `...-linux-x64-offline.AppImage` /
+`...-linux-x64-offline`, about 900 MB) carry the three model files inside the binary for machines without
 internet: the first-run screen says "included in this build", and the Models
 screen's button reads **Unpack** instead of Download. Everything else is
 identical, including the hash check on every file. The small build is the
@@ -42,18 +46,22 @@ one to pick when the machine is online.
 ## Quick start (two minutes)
 
 1. **Windows:** put `Morphonic.exe` in its own folder anywhere (Desktop,
-   `C:\Tools\…`) and run it. **Fedora:** make the download executable and run
-   it — Linux never sets that bit on a downloaded file:
+   `C:\Tools\…`) and run it. **Linux:** make the AppImage executable and run
+   it — Linux never sets that bit on a downloaded file (or: Properties →
+   *Allow executing file as program* in the file manager):
 
    ```
-   chmod +x ~/Downloads/Morphonic-<version>-linux-x64
-   ~/Downloads/Morphonic-<version>-linux-x64
+   chmod +x ~/Downloads/Morphonic-<version>-linux-x64.AppImage
+   ~/Downloads/Morphonic-<version>-linux-x64.AppImage
    ```
 
    If a dialog says packages are missing, it names them; on Fedora that is
    `sudo dnf install gtk3 libnotify webkit2gtk4.1 pipewire-utils`.
-   **Settings → Add to app grid** (or `--install`) copies Morphonic to
-   `~/.local/share/Morphonic/app/` and adds it to your app grid, no root needed.
+   On the first start Morphonic offers **Add to app grid** (also in
+   Settings → Desktop, or `--install`): it copies the app to
+   `~/.local/share/Morphonic/app/` and adds it to your app menu, no root
+   needed. Start it from there afterwards — a file manager asks every time
+   whether to run a downloaded program; the app menu does not.
 2. On first launch, press **Set up voice conversion** (≈740 MB: the content
    encoder and the pitch model), or **Add the sample voice** to also get a
    generic voice to try (≈73 MB more). Everything comes straight from the
@@ -107,8 +115,20 @@ selected, Auto stays quiet because you already hear the output itself.
 
 Morphonic runs **RVC v2 voices with pitch guidance** (the common kind: 768-dim
 ContentVec features, `f0 = 1`) — RVC v1 voices and voices trained without
-pitch are refused with a message. The `.index` files that come with RVC
-voices are not used; conversion runs from the features alone.
+pitch are refused with a message.
+
+**Index files.** Most RVC voices come with an `.index` (the voice's own
+training features, a FAISS file). With it, each moment of your speech is
+pulled toward the nearest sounds of the voice's training audio, so the
+result sounds more like the voice and less like you — RVC calls this
+*feature retrieval*. The index travels with its voice: a `.zip` or a Hugging
+Face repository brings it along, a `.pth` picked from a folder brings the
+`.index` beside it, an `.index` dropped or picked with a voice goes with
+that voice, and **Add index…** on a voice's row in My voices adds one later.
+The **Index** slider under Pitch on the Voice screen sets how much of it is
+used (75 % to start with; 0 % is the voice alone, as without an index). It
+applies live. The index is read by Morphonic itself — no FAISS library,
+nothing in the file is executed — and costs a few milliseconds per block.
 
 The Voices screen has two halves:
 
@@ -119,9 +139,8 @@ The Voices screen has two halves:
   Hugging Face and downloads a repository's `.pth`/`.onnx`/`.zip` straight
   into the library, verified against the SHA-256 the Hub publishes; the
   **sample voice** download; **Import voice…** or the drop zone for a file
-  on this PC (`.pth`, `.onnx`, or the `.zip` a voice library gave you — the
-  `.pth` inside is taken, the `.index` is ignored); and links to the other
-  libraries.
+  on this PC (`.pth`, `.onnx`, or the `.zip` a voice library gave you, with
+  the voice's `.index`); and links to the other libraries.
 
 Whatever the route, a new voice lands in **My voices**, is converted if it
 is a `.pth`, becomes the active voice (unless one is running, when the
@@ -239,7 +258,9 @@ A file that does not match the checksum is thrown away and nothing changes.
 `Morphonic --update` does the same from a terminal. Morphonic never updates
 on its own. If its folder is not writable (a binary somewhere only an
 administrator can write), the update says so and offers the release page
-instead; replacing the binary by hand works as before.
+instead; replacing the binary by hand works as before. An AppImage updates
+to the AppImage (the `.AppImage` file is replaced where it is, so app-menu
+entries and shortcuts keep working); a bare binary to the bare binary.
 
 To fully uninstall: delete the app and that data folder. Windows also keeps
 one registry value under `HKEY_CURRENT_USER\Software\Morphonic` (records that
@@ -341,8 +362,9 @@ Requires the .NET 9 SDK (Windows or Linux).
 ```
 dotnet build Morphonic.sln              # debug build + tests project
 dotnet test src/Morphonic.Tests/Morphonic.Tests.csproj
-.\build.ps1                         # Windows: releases\Morphonic-<ver>-win-x64.zip and the Linux binary (cross-published)
-./build.sh                          # Fedora: releases/Morphonic-<ver>-linux-x64
+.\build.ps1                         # Windows: releases\Morphonic-<ver>-win-x64.zip, the Linux binary (cross-published)
+                                    # and its AppImage (packed in WSL, -AppImageDistro; -NoAppImage to skip)
+./build.sh                          # Fedora: releases/Morphonic-<ver>-linux-x64 and .AppImage
 ```
 
 The tests check the signal processing against values produced by the
@@ -382,9 +404,28 @@ its hash exactly as it pins the download's.
 
 The templates were produced from `tools/morphonic_export.py` exports with
 `tools/make_templates.py template`; `tools/make_templates.py assemble`
-rebuilds a model in Python to pin its hash and compare it with the export.
+rebuilds a model in Python to pin its hash and compare it with the export
+(with the voice's sampling switched off on both sides, so the comparison is
+exact). The same mechanism converts your own `.pth` voices in seconds, from
+one generic template per sample rate (`rvc-v2-32k/40k/48k`), and every
+tensor of such a voice is read from your checkpoint. (Before 1.0.5 the
+small ones — every bias — stayed in the template with the values of RVC's
+pretrained generator, which made converted voices rough and breathy;
+1.0.5 rebuilds voices converted that way from their `.pth` on its first
+start.)
 `MORPHONIC_TEST_SOURCES=<folder with both checkpoints> dotnet test` checks that
 the app's assembly reproduces those hashes byte for byte.
+
+### AppImage
+
+`tools/build-appimage.sh <binary> <out.AppImage> <version>` packs a Linux
+binary the way `appimagetool` would: an AppDir (the binary, an `AppRun`
+that execs it, the desktop entry and the icon) squashed with zstd and
+appended to the AppImage project's type-2 runtime (release 20251108, pinned
+by SHA-256). File times and ownership are fixed, so the same binary always
+gives the same AppImage. From an AppImage, Morphonic restarts, updates and
+installs itself through the `.AppImage` file (`$APPIMAGE`), never through
+the binary inside, which lives in a mount that goes away when it exits.
 
 ## How it works
 

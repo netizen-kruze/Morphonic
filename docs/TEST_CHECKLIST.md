@@ -104,6 +104,22 @@ Simulate a fresh machine: quit Morphonic, rename the data folder away
 - [ ] Delete the active voice while running → refused; stop, delete → the
       Voice screen says to choose a voice.
 - [ ] Open folder opens the voices folder in the file manager.
+- [ ] Index: a voice library `.zip` holding `model.pth` and `added_…v2.index`
+      lands with an **index** badge on its row; so does a `.pth` picked from
+      a folder that holds its `.index`, and a Find voices download from a
+      repository with one. **Add index…** on a row without one takes an
+      `.index` (a file that is not an RVC v2 index is refused with a
+      message); **Remove index** takes it away. On the Voice screen the
+      **Index** slider (under Pitch) reads 75 % for a voice with an index and
+      "none" (disabled) for one without; moving it while the voice runs
+      changes the sound without a restart; `last_boot.log` has an
+      `index:` line when the voice loads.
+- [ ] A voice converted in the app by 1.0.4 or older (its `.pth` still in the
+      library): the first start of 1.0.5 says it is rebuilding it, the row
+      shows "rebuilding…" for a second or two, and `last_boot.log` has a
+      `rebuild: … rebuilt` line; the voice sounds clearer than before
+      (less hiss and breath). Without its `.pth` the toast says to import it
+      again.
 
 ## D. Routing
 
@@ -173,6 +189,12 @@ Simulate a fresh machine: quit Morphonic, rename the data folder away
       Microsoft's installer.
 - [ ] Linux file: `chmod +x`, runs; a machine without `webkit2gtk4.1` gets
       the dnf hint instead of a crash; `tools/smoke.sh <binary>` passes.
+- [ ] Linux AppImage: `chmod +x`, runs (double-click in the file manager
+      too); `last_boot.log`'s `exe:` line says "from the AppImage …". The
+      first start offers **Add to app grid**; after it, the app menu entry
+      starts Morphonic without the file manager's question, and
+      `~/.local/share/Morphonic/app/Morphonic` is the AppImage. Quitting
+      leaves no `/tmp/.mount_Morpho*` behind (`grep .mount_ /proc/mounts`).
 - [ ] Update simulation: replace the binary only → settings, voices,
       components and the GPU pack survive.
 - [ ] Settings → Updates is the first section of the screen, in view
@@ -182,6 +204,9 @@ Simulate a fresh machine: quit Morphonic, rename the data folder away
       says "Could not check" and nothing else changes. No request is made
       before the button is pressed (`last_boot.log` has no "update check"
       line).
+- [ ] Update now from an AppImage: the `.AppImage` file is replaced where it
+      is (same name), Morphonic comes back on the new version, and only one
+      `.mount_` is left once it is up.
 - [ ] Update now (an older build, e.g. the previous release): a progress
       bar, then Morphonic closes and reopens by itself on the new version
       with a toast "Morphonic is updated to …"; settings and voices are as

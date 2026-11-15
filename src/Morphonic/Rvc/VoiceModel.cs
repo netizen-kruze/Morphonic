@@ -160,10 +160,24 @@ public sealed class VoiceModel : IDisposable
     // skipped by seeking, so this costs nothing for a library listing.
     public static VoiceMetadata ReadMetadata(string path)
     {
-        try
+        try { return FromProps(ReadProps(path), path); }
+        catch { return VoiceMetadata.Unknown; }
+    }
+
+    // The "morphonic" metadata entry as written (JSON), or "" when absent.
+    public static string ReadMorphonicJson(string path)
+    {
+        try { return ReadProps(path).TryGetValue("morphonic", out var j) ? j : ""; }
+        catch { return ""; }
+    }
+
+    // The model's metadata_props (ModelProto field 14), read by walking the
+    // top-level fields without loading the graph or the weights.
+    private static Dictionary<string, string> ReadProps(string path)
+    {
+        var props = new Dictionary<string, string>(StringComparer.Ordinal);
+        using var f = File.OpenRead(path);
         {
-            var props = new Dictionary<string, string>(StringComparer.Ordinal);
-            using var f = File.OpenRead(path);
             while (f.Position < f.Length)
             {
                 if (!TryReadVarint(f, out var tag)) break;
@@ -174,22 +188,21 @@ public sealed class VoiceModel : IDisposable
                     case 1: f.Seek(8, SeekOrigin.Current); break;
                     case 5: f.Seek(4, SeekOrigin.Current); break;
                     case 2:
-                        if (!TryReadVarint(f, out var len)) return VoiceMetadata.Unknown;
+                        if (!TryReadVarint(f, out var len)) throw new InvalidDataException("truncated field");
                         if (field == 14 && len < 1_000_000)
                         {
                             var buf = new byte[len];
-                            if (f.Read(buf, 0, (int)len) != (int)len) return VoiceMetadata.Unknown;
+                            if (f.Read(buf, 0, (int)len) != (int)len) return props;
                             var (k, v) = ParseStringEntry(buf);
                             if (k.Length > 0) props[k] = v;
                         }
                         else f.Seek((long)len, SeekOrigin.Current);
                         break;
-                    default: return FromProps(props, path);
+                    default: return props;
                 }
             }
-            return FromProps(props, path);
+            return props;
         }
-        catch { return VoiceMetadata.Unknown; }
     }
 
     private static VoiceMetadata FromProps(Dictionary<string, string> props, string path)

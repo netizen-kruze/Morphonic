@@ -26,7 +26,7 @@ public static class SupportReport
         sb.AppendLine("Morphonic " + version);
         sb.AppendLine("written:   " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
         sb.AppendLine("machine:   " + Safe(MachineProfile.Describe));
-        sb.AppendLine("exe:       " + Environment.ProcessPath);
+        sb.AppendLine("exe:       " + Environment.ProcessPath + (AppFile.AppImage is { } ai ? $" (from the AppImage {ai})" : ""));
         sb.AppendLine("data:      " + dir);
         sb.AppendLine("os:        " + Environment.OSVersion.VersionString + (OperatingSystem.IsLinux()
             ? " / " + Safe(() => File.Exists("/etc/os-release") ? (File.ReadAllText("/etc/os-release").Split('\n').FirstOrDefault(l => l.StartsWith("PRETTY_NAME=")) ?? "")["PRETTY_NAME=".Length..].Trim('"') : "")

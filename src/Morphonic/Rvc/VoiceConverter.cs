@@ -17,6 +17,11 @@ public sealed class VoiceConverter : IDisposable
     public int SpeakerId { get; set; }
     public double VoicingThreshold { get; set; } = 0.03;
 
+    // The voice's .index (feature retrieval) and how much of it to use:
+    // 0 = off, 1 = the retrieved features only (RVC's index_rate).
+    public FeatureIndex? Index { get; set; }
+    public float IndexRate { get; set; }
+
     private long[] _cachePitch = Array.Empty<long>();
     private float[] _cachePitchf = Array.Empty<float>();
 
@@ -55,6 +60,10 @@ public sealed class VoiceConverter : IDisposable
         var raw = Encoder.Extract(window16, out int encFrames);
         var feats = new float[pLen * VoiceModel.FeatureDim];
         if (encFrames == 0) throw new InvalidOperationException("the content encoder produced no frames — the window is too short");
+        // Feature retrieval on the frames the decoder will voice (RVC's
+        // rtrvc.py: feats[skip_head // 2:]), before the 10 ms upsampling.
+        var index = Index;
+        if (index != null && IndexRate > 0f) index.Blend(raw, skipHead / 2, encFrames, IndexRate);
         for (int i = 0; i < pLen; i++)
         {
             int src = Math.Min(i / 2, encFrames - 1);

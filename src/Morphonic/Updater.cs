@@ -31,7 +31,8 @@ public static class Updater
             throw new InvalidOperationException("the release has no file for this platform");
         if (r.SumsUrl.Length == 0) throw new InvalidOperationException("the release has no SHA256SUMS.txt to check the file against");
 
-        var exe = Environment.ProcessPath;
+        // From an AppImage: the .AppImage file, never the binary in its mount.
+        var exe = AppFile.Current;
         if (string.IsNullOrEmpty(exe) || !File.Exists(exe)) throw new InvalidOperationException("cannot find the running program file");
         exe = Path.GetFullPath(exe);
         var dir = Path.GetDirectoryName(exe)!;
@@ -133,7 +134,7 @@ public static class Updater
     {
         try
         {
-            var exe = Environment.ProcessPath;
+            var exe = AppFile.Current;
             if (string.IsNullOrEmpty(exe)) return;
             TryDelete(OldPath(exe));
             TryDelete(Path.Combine(Path.GetDirectoryName(exe)!, "." + Path.GetFileName(exe) + ".new"));

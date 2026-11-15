@@ -119,6 +119,7 @@ function renderDevices(p) {
 
   $('rngPitch').value = p.pitch;
   $('outPitch').textContent = (p.pitch > 0 ? '+' : '') + p.pitch + ' st';
+  renderIndexCtl(p.indexRate, p.voiceHasIndex);
   const seg = (id, v) => document.querySelectorAll('#' + id + ' button').forEach(b => b.classList.toggle('on', String(parseFloat(b.dataset.v)) === String(v)));
   seg('segBlock', p.blockMs); seg('segExtra', p.extraMs); seg('segCross', p.crossfadeMs);
   seg('segGate', p.noiseGateDb); seg('segRms', p.rmsMixRate); seg('segGain', p.outputGainDb);
@@ -177,14 +178,19 @@ function renderVoices(p) {
     const converting = v.id === p.converting;
     const badges = [
       v.kind === 'pth' ? (converting ? '<span class="badge pth">converting…</span>' : '<span class="badge pth">.pth — not converted yet</span>') : '',
+      v.kind === 'onnx' && converting ? '<span class="badge pth">rebuilding…</span>' : '',
       active ? '<span class="badge active">Active</span>' : '',
+      v.index ? '<span class="badge idx" title="This voice has its .index: the Index slider on the Voice screen sets how much it is used">index</span>' : '',
     ].join(' ');
+    const idx = v.index
+      ? `<button class="chipbtn" data-noidx="${esc(v.id)}" title="Stop using this voice's .index">Remove index</button>`
+      : `<button class="chipbtn" data-addidx="${esc(v.id)}" title="The .index that came with this voice (RVC feature index): brings the sound closer to the voice">Add index…</button>`;
     const meta = v.kind === 'onnx'
       ? `${MB(v.sizeBytes)} · ${v.sampleRate ? (v.sampleRate / 1000) + ' kHz' : 'rate detected on first use'}${v.speakers > 1 ? ` · ${v.speakers} speakers` : ''}${v.skipHead ? ' · tail decode' : ''}${v.source ? ' · from ' + esc(v.source) : ''}`
       : `${MB(v.sizeBytes)} · RVC checkpoint`;
     const acts = v.kind === 'onnx'
-      ? `${active ? '' : `<button class="chipbtn amber" data-use="${esc(v.id)}">Use</button>`}<button class="chipbtn danger" data-delv="${esc(v.id)}">Delete</button>`
-      : `<button class="chipbtn amber" data-conv="${esc(v.id)}" ${converting ? 'disabled' : ''}>${converting ? 'Converting…' : 'Convert'}</button><button class="chipbtn danger" data-delv="${esc(v.id)}">Delete</button>`;
+      ? `${active ? '' : `<button class="chipbtn amber" data-use="${esc(v.id)}">Use</button>`}${idx}<button class="chipbtn danger" data-delv="${esc(v.id)}">Delete</button>`
+      : `<button class="chipbtn amber" data-conv="${esc(v.id)}" ${converting ? 'disabled' : ''}>${converting ? 'Converting…' : 'Convert'}</button>${idx}<button class="chipbtn danger" data-delv="${esc(v.id)}">Delete</button>`;
     return `<div class="row${active ? ' active' : ''}" data-vid="${esc(v.id)}"><span class="grow"><span class="name">${esc(v.name)}</span> ${badges}<span class="meta">${meta}</span></span><span class="acts">${acts}</span></div>`;
   }).join('');
   $('voiceRows').innerHTML = rows || '<div class="empty">No voices yet. Open <b>Get voices</b> to search Hugging Face, add the sample voice, or drop a .pth / .onnx file.</div>';
@@ -197,6 +203,8 @@ function renderVoices(p) {
   $('voiceRows').querySelectorAll('[data-use]').forEach(b => b.addEventListener('click', () => send({ action: 'setVoice', id: b.dataset.use })));
   $('voiceRows').querySelectorAll('[data-conv]').forEach(b => b.addEventListener('click', () => send({ action: 'convertVoice', id: b.dataset.conv })));
   $('voiceRows').querySelectorAll('[data-delv]').forEach(b => b.addEventListener('click', () => send({ action: 'deleteVoice', id: b.dataset.delv })));
+  $('voiceRows').querySelectorAll('[data-addidx]').forEach(b => b.addEventListener('click', () => send({ action: 'addIndex', id: b.dataset.addidx })));
+  $('voiceRows').querySelectorAll('[data-noidx]').forEach(b => b.addEventListener('click', () => send({ action: 'removeIndex', id: b.dataset.noidx })));
 }
 // The two halves of the Voices screen: choosing (My voices) and getting (Get voices).
 function showVoiceTab(name) {
@@ -267,8 +275,11 @@ function ackFor(name) { return new Promise(res => importAcks.set(name, res)); }
 function onImportAck(p) { const r = importAcks.get(p.name); if (r) { importAcks.delete(p.name); r(p); } }
 let importing = false;
 async function importFiles(files) {
-  const list = Array.from(files || []).filter(f => /[.](pth|onnx|zip)$/i.test(f.name));
-  if (!list.length) { toast(false, 'Drop a .pth, .onnx or .zip voice file'); return; }
+  // Voices first, then .index files: an index goes with the voice that
+  // arrived just before it (or the active voice).
+  const list = Array.from(files || []).filter(f => /[.](pth|onnx|zip|index)$/i.test(f.name))
+    .sort((a, b) => /[.]index$/i.test(a.name) - /[.]index$/i.test(b.name));
+  if (!list.length) { toast(false, 'Drop a .pth, .onnx or .zip voice file (and its .index)'); return; }
   if (importing) { toast(false, 'An import is already running'); return; }
   importing = true;
   const status = $('dropStatus');
@@ -529,6 +540,25 @@ $('selSidetone').addEventListener('change', () => {
 });
 $('selInput').addEventListener('change', () => send({ action: 'setInputDevice', index: parseInt($('selInput').value, 10) }));
 $('selOutput').addEventListener('change', () => send({ action: 'setOutputDevice', index: parseInt($('selOutput').value, 10) }));
+// Index strength (RVC's index rate): live, throttled like the pitch.
+function renderIndexCtl(rate, has) {
+  const v = Math.round((rate ?? 0.75) * 100);
+  if (document.activeElement !== $('rngIndex')) $('rngIndex').value = v;
+  $('outIndex').textContent = has ? v + '%' : 'none';
+  $('rngIndex').disabled = !has;
+  $('ctlIndex').classList.toggle('off', !has);
+  $('ctlIndex').title = has
+    ? 'How much of the voice\'s .index (its training features) is used: higher sounds more like the voice, lower keeps more of your articulation'
+    : 'This voice has no .index — add the one that came with it from its row in Voices → My voices';
+}
+let indexTimer = null;
+$('rngIndex').addEventListener('input', () => {
+  const v = parseInt($('rngIndex').value, 10);
+  $('outIndex').textContent = v + '%';
+  clearTimeout(indexTimer);
+  indexTimer = setTimeout(() => send({ action: 'config', indexRate: v / 100 }), 150);
+});
+
 // The pitch slider applies live; sends are throttled while dragging.
 let pitchTimer = null;
 $('rngPitch').addEventListener('input', () => {
@@ -631,11 +661,11 @@ if (DEMO) {
   onMessage(JSON.stringify({ type: 'devices', payload: {
     platform: 'windows', inputs: ['System default', 'Headset Microphone (Index)', 'USB Desk Mic'], outputs: ['System default', 'CABLE Input (VB-Audio Virtual Cable)', 'Speakers (Realtek)'],
     savedInput: 1, savedOutput: 1, savedMonitor: 2, hasCable: true, virtualMic: false, virtualMicStatus: 'n/a',
-    pitch: 6, speakerId: 0, blockMs: 160, extraMs: 2500, crossfadeMs: 50, noiseGateDb: -60, rmsMixRate: 0.5, outputGainDb: 0,
+    pitch: 6, speakerId: 0, blockMs: 160, extraMs: 2500, crossfadeMs: 50, noiseGateDb: -60, rmsMixRate: 0.5, indexRate: 0.75, voiceHasIndex: true, outputGainDb: 0,
     acceleration: 'auto', accelActive: 'DirectML', accelStatus: 'DirectML (loaded DirectML; onnxruntime.dll from the GPU pack)',
     componentsReady: true, voiceId: 'nova.onnx', voiceName: 'Nova', pythonFound: true } }));
   onMessage(JSON.stringify({ type: 'voices', payload: { active: 'nova.onnx', converting: '', folder: 'C:\\Users\\you\\AppData\\Roaming\\Morphonic\\voices', voices: [
-    { id: 'nova.onnx', name: 'Nova', kind: 'onnx', sizeBytes: 110674164, sampleRate: 40000, speakers: 1, skipHead: true, source: 'nova.pth' },
+    { id: 'nova.onnx', name: 'Nova', kind: 'onnx', sizeBytes: 110674164, sampleRate: 40000, speakers: 1, skipHead: true, source: 'nova.pth', index: true },
     { id: 'sample-voice-40k.onnx', name: 'Sample voice (RVC base, 40 kHz)', kind: 'onnx', sizeBytes: 110674164, sampleRate: 40000, speakers: 109, skipHead: true, source: 'f0G40k.pth' },
     { id: 'moth.pth', name: 'moth', kind: 'pth', sizeBytes: 55e6 }] } }));
   onMessage(JSON.stringify({ type: 'models', payload: { tier: 'Gpu', tierLabel: 'GPU (DirectML)', tierNote: '', accelActive: 'DirectML', downloading: '', models: [

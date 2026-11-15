@@ -282,6 +282,32 @@ public static class LinuxHost
     [DllImport("libc.so.6", SetLastError = true)]
     private static extern int kill(int pid, int sig);
 
+    // Descriptors this process inherited (beyond stdin, stdout, stderr) are
+    // not handed on to the programs it starts. An AppImage's runtime learns
+    // that the app has exited when a pipe it gave the app closes; a child
+    // holding a copy (the Morphonic a restart or an update starts, the
+    // browser xdg-open opens, pw-record) kept the old mount, and the old
+    // runtime, alive for as long as that child ran.
+    public static void KeepInheritedDescriptorsToOurselves()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        try
+        {
+            foreach (var entry in Directory.GetFiles("/proc/self/fd"))
+            {
+                if (!int.TryParse(Path.GetFileName(entry), out var fd) || fd <= 2) continue;
+                int flags = fcntl(fd, F_GETFD, 0);
+                if (flags >= 0 && (flags & FD_CLOEXEC) == 0) fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
+            }
+        }
+        catch { }
+    }
+
+    private const int F_GETFD = 1, F_SETFD = 2, FD_CLOEXEC = 1;
+
+    [DllImport("libc.so.6", SetLastError = true)]
+    private static extern int fcntl(int fd, int cmd, int arg);
+
     private static void Forward(Process p, int sig)
     {
         try { if (!p.HasExited) kill(p.Id, sig); } catch { }

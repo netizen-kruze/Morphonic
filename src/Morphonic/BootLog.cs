@@ -30,7 +30,7 @@ public static class BootLog
                 $"started:        {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
                 $"version:        {version}",
                 $"machine:        {machine}",
-                $"exe:            {Environment.ProcessPath}",
+                $"exe:            {Environment.ProcessPath}{(AppFile.AppImage is { } ai ? $" (from the AppImage {ai})" : "")}",
                 $"args:           {(args.Length == 0 ? "(none)" : string.Join(" ", args))}",
                 $"run before:     {(AppSettings.HasRunBefore() ? "yes" : "no")} (per-user marker, not per data folder)",
                 $"data folder:    {AppPaths.DataDir} — {(entries < 0 ? "NOT listable" : entries + " entries, the app's own included")}",

@@ -35,12 +35,16 @@ public class AppSettings
     public int CrossfadeMs { get; set; } = 50;         // SOLA overlap between blocks
     public int NoiseGateDb { get; set; } = -60;        // -60 = off
     public double RmsMixRate { get; set; } = 0.5;      // 1 = output keeps its own loudness, 0 = follows the input
+    public double IndexRate { get; set; } = 0.75;      // feature retrieval from the voice's .index: 0 = off, 1 = index only
     public int OutputGainDb { get; set; } = 0;
 
     // "auto" = GPU pack when installed and usable, else CPU; "cpu" forces the CPU.
     public string Acceleration { get; set; } = "auto";
     // Linux: create the "Morphonic Voice" virtual microphone while running.
     public bool VirtualMic { get; set; } = true;
+    // Linux: "Add to app grid" was offered once (a launch from the file
+    // manager asks every time whether to run the file; the app grid does not).
+    public bool AppGridOffered { get; set; }
 
     private static readonly JsonSerializerOptions OnDisk = new() { WriteIndented = true };
 

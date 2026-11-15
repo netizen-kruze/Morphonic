@@ -54,6 +54,109 @@ public static class VoiceLibrary
 
     public static bool Exists(string id) => id.Length > 0 && File.Exists(PathFor(id));
 
+    // ── a voice's .index ────────────────────────────────────────────
+    // Kept beside the voice under its name ("SpongeBob.index" for
+    // SpongeBob.pth / SpongeBob.onnx), so it follows the voice through
+    // naming and conversion and goes when the voice goes.
+
+    public static string IndexPathFor(string voiceId) =>
+        Path.Combine(Dir, Path.GetFileNameWithoutExtension(Path.GetFileName(voiceId)) + ".index");
+
+    public static bool HasIndex(string voiceId) => voiceId.Length > 0 && File.Exists(IndexPathFor(voiceId));
+
+    // The index for a voice about to run; null (and a note for the log)
+    // when there is none or it cannot be read — the voice runs without.
+    public static FeatureIndex? LoadIndex(string voiceId, out string note)
+    {
+        note = "none";
+        var path = IndexPathFor(voiceId);
+        if (!File.Exists(path)) return null;
+        try
+        {
+            var sw = Stopwatch.StartNew();
+            var index = FeatureIndex.Load(path);
+            note = $"{Path.GetFileName(path)}: {index.Count:N0} vectors in {index.ListCount} list(s), {sw.ElapsedMilliseconds} ms";
+            return index;
+        }
+        catch (Exception ex)
+        {
+            ErrorLog.WriteNote("Index", $"{Path.GetFileName(path)}: {ex.Message}");
+            note = $"{Path.GetFileName(path)} could not be read ({ex.Message}) — running without it";
+            return null;
+        }
+    }
+
+    // Copies `source` (a FAISS .index) in as the index of `voiceId`,
+    // replacing one it had.
+    public static (bool Ok, string Message) AttachIndex(string source, string voiceId)
+    {
+        try
+        {
+            if (!Exists(voiceId)) return (false, "the index has no voice to go with");
+            var check = FeatureIndex.Check(source);
+            if (!check.Ok) return (false, check.Message);
+            var dest = IndexPathFor(voiceId);
+            var tmp = dest + ".importing";
+            if (!string.Equals(Path.GetFullPath(source), Path.GetFullPath(tmp), StringComparison.OrdinalIgnoreCase))
+                File.Copy(source, tmp, overwrite: true);
+            File.Move(tmp, dest, overwrite: true);
+            return (true, $"index added to {Path.GetFileNameWithoutExtension(voiceId)} ({check.Message})");
+        }
+        catch (Exception ex)
+        {
+            ErrorLog.WriteEntry("VoiceLibrary.AttachIndex", ex);
+            return (false, "the index could not be added: " + ex.Message);
+        }
+    }
+
+    public static bool RemoveIndex(string voiceId)
+    {
+        try { var p = IndexPathFor(voiceId); if (File.Exists(p)) File.Delete(p); return true; }
+        catch (Exception ex) { ErrorLog.WriteEntry("VoiceLibrary.RemoveIndex", ex); return false; }
+    }
+
+    // The .index that came with a voice file picked from disk: in the same
+    // folder, one naming the voice ("added_IVF256_Flat_nprobe_1_SpongeBob_v2.index"
+    // beside SpongeBob.pth), or the only one in a folder that belongs to
+    // the voice (not Downloads or the desktop).
+    internal static string? SiblingIndex(string voicePath)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(Path.GetFullPath(voicePath)) ?? "";
+            if (dir.Length == 0 || !Directory.Exists(dir)) return null;
+            var all = Directory.EnumerateFiles(dir, "*.index").Where(f => !f.EndsWith(".importing", StringComparison.OrdinalIgnoreCase)).ToList();
+            var stem = Path.GetFileNameWithoutExtension(voicePath);
+            if (!IsGenericName(Path.GetFileName(voicePath)))
+            {
+                var named = all.Where(f => Path.GetFileNameWithoutExtension(f).Contains(stem, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (named.Count > 0) return PreferAdded(named);
+            }
+            if (IsUserFolder(dir)) return null;
+            var voices = Directory.EnumerateFiles(dir).Count(f => Path.GetExtension(f).ToLowerInvariant() is ".pth" or ".onnx");
+            return voices <= 2 && all.Count > 0 ? PreferAdded(all) : null;   // the voice, and perhaps its conversion
+        }
+        catch { return null; }
+    }
+
+    // Attaches `index` to `voiceId` unless the voice already has one; the
+    // message suffix for the import's answer ("" when nothing was added).
+    internal static string BringIndex(string? index, string voiceId)
+    {
+        if (index == null || HasIndex(voiceId)) return "";
+        var (ok, message) = AttachIndex(index, voiceId);
+        if (!ok) { BootLog.Append($"index beside {voiceId} not used: {message}"); return ""; }
+        return " with its index";
+    }
+
+    // RVC's training leaves "trained_IVF…" (centroids only, before the
+    // vectors were added) beside "added_IVF…" (the one to use).
+    internal static string PreferAdded(IReadOnlyList<string> candidates) =>
+        candidates.OrderByDescending(f => Path.GetFileName(f).StartsWith("added", StringComparison.OrdinalIgnoreCase))
+                  .ThenBy(f => Path.GetFileName(f).StartsWith("trained", StringComparison.OrdinalIgnoreCase))
+                  .ThenByDescending(f => { try { return new FileInfo(f).Length; } catch { return 0L; } })
+                  .First();
+
     // Voice libraries name nearly every checkpoint "model.pth" or
     // "G_2333.pth"; a voice named "model" tells the user nothing and the
     // next download would replace it. A generic file name is replaced by
@@ -175,9 +278,8 @@ public static class VoiceLibrary
         return collapsed.Length > 80 ? collapsed[..80].TrimEnd() : collapsed;
     }
 
-    // Copies a file the user picked into the library. The .index files
-    // that come with RVC voices are not used (feature retrieval is not
-    // part of this pipeline), so they are not copied.
+    // Copies a file the user picked into the library, with the .index that
+    // sits beside it (SiblingIndex) when the voice has none yet.
     public static (bool Ok, string Message) Import(string sourcePath) => Import(sourcePath, out _);
 
     // `added`: the library id of the voice that landed (for a zip, the
@@ -215,9 +317,10 @@ public static class VoiceLibrary
             File.Copy(sourcePath, tmp, overwrite: true);
             var final = Land(tmp, Path.GetFileName(dest), out bool again);
             added = final;
-            return (true, again ? $"{final} is already in your library"
-                : ext == ".pth" ? $"{final} added — converting to an ONNX voice now"
-                : $"{final} added");
+            var withIndex = BringIndex(SiblingIndex(sourcePath), final);
+            return (true, again ? $"{final} is already in your library{withIndex}"
+                : ext == ".pth" ? $"{final} added{withIndex} — converting to an ONNX voice now"
+                : $"{final} added{withIndex}");
         }
         catch (Exception ex)
         {
@@ -259,6 +362,7 @@ public static class VoiceLibrary
                 continue;
             }
             if (File.Exists(Path.Combine(Dir, s + otherExt))) continue;
+            if (File.Exists(Path.Combine(Dir, s + ".index"))) continue;   // another voice's index (its voice deleted by hand)
             return s + ext;
         }
         return $"{stem} {Guid.NewGuid().ToString("N")[..8]}{ext}";
@@ -285,10 +389,11 @@ public static class VoiceLibrary
 
     public static (bool Ok, string Message) ImportZip(string zipPath) => ImportZip(zipPath, out _);
 
-    // Voice libraries hand out zips holding the .pth (and an .index the
-    // app does not use, plus sometimes a readme). Only the voice files
-    // are taken, by their own names: no folders from the archive.
-    // `added` lists the library ids that landed.
+    // Voice libraries hand out zips holding the .pth and its .index (plus
+    // sometimes a readme). The voice files are taken by their own names, no
+    // folders from the archive; an index goes with the voice in its folder
+    // of the zip (or with the only voice). `added` lists the library ids
+    // that landed.
     public static (bool Ok, string Message) ImportZip(string zipPath, out List<string> added)
     {
         added = new List<string>();
@@ -299,8 +404,10 @@ public static class VoiceLibrary
             var bundle = Path.GetFileName(zipPath);
             if (bundle.EndsWith(".importing", StringComparison.OrdinalIgnoreCase)) bundle = bundle[..^".importing".Length];
             bundle = Path.GetFileNameWithoutExtension(bundle);
+            int indexed = 0;
             using (var zip = ZipFile.OpenRead(zipPath))
             {
+                var landed = new List<(string Folder, string Id)>();
                 foreach (var entry in zip.Entries)
                 {
                     var ext = Path.GetExtension(entry.Name).ToLowerInvariant();
@@ -309,19 +416,44 @@ public static class VoiceLibrary
                     var name = LibraryName(bundle, entry.FullName);
                     var tmp = Path.Combine(Dir, name + ".importing");
                     entry.ExtractToFile(tmp, overwrite: true);
-                    added.Add(Land(tmp, name, out _));
+                    var id = Land(tmp, name, out _);
+                    added.Add(id);
+                    landed.Add((ZipFolder(entry.FullName), id));
+                }
+                var indexes = zip.Entries.Where(e => e.Name.EndsWith(".index", StringComparison.OrdinalIgnoreCase) && e.Length > 0 && e.Length < 8L << 30).ToList();
+                foreach (var (folder, id) in landed)
+                {
+                    var near = indexes.Where(e => ZipFolder(e.FullName) == folder).ToList();
+                    if (near.Count == 0 && landed.Count == 1) near = indexes;
+                    if (near.Count == 0 || HasIndex(id)) continue;
+                    var pick = near.OrderByDescending(e => e.Name.StartsWith("added", StringComparison.OrdinalIgnoreCase))
+                                   .ThenBy(e => e.Name.StartsWith("trained", StringComparison.OrdinalIgnoreCase))
+                                   .ThenByDescending(e => e.Length).First();
+                    var tmpIndex = IndexPathFor(id) + ".importing";
+                    pick.ExtractToFile(tmpIndex, overwrite: true);
+                    var (ok, message) = AttachIndex(tmpIndex, id);
+                    try { File.Delete(tmpIndex); } catch { }
+                    if (ok) indexed++; else BootLog.Append($"index {pick.FullName} in {Path.GetFileName(zipPath)} not used: {message}");
                 }
             }
             if (added.Count == 0)
                 return (false, $"{Path.GetFileName(zipPath)} holds no .pth or .onnx voice (an .index file alone is not a voice)");
             bool needsConvert = added.Any(n => n.EndsWith(".pth", StringComparison.OrdinalIgnoreCase));
-            return (true, string.Join(", ", added) + (needsConvert ? " added — converting to an ONNX voice now" : " added"));
+            var withIndex = indexed == 0 ? "" : indexed == 1 && added.Count == 1 ? " with its index" : $" ({indexed} with an index)";
+            return (true, string.Join(", ", added) + withIndex + (needsConvert ? " added — converting to an ONNX voice now" : " added"));
         }
         catch (Exception ex)
         {
             ErrorLog.WriteEntry("VoiceLibrary.ImportZip", ex);
             return (false, "could not read the zip: " + ex.Message);
         }
+    }
+
+    private static string ZipFolder(string fullName)
+    {
+        var n = fullName.Replace('\\', '/');
+        int slash = n.LastIndexOf('/');
+        return slash < 0 ? "" : n[..slash];
     }
 
     // ── streamed import (drag and drop, Find voices) ─────────────────
@@ -335,9 +467,9 @@ public static class VoiceLibrary
     {
         name = Path.GetFileName(name);
         var ext = Path.GetExtension(name).ToLowerInvariant();
-        if (name.Length == 0 || ext is not (".pth" or ".onnx" or ".zip"))
-            return (false, $"{name}: not a voice file (.pth, .onnx or .zip)");
-        if (size < 0 || size > 4L << 30) return (false, $"{name}: unexpected size");
+        if (name.Length == 0 || ext is not (".pth" or ".onnx" or ".zip" or ".index"))
+            return (false, $"{name}: not a voice file (.pth, .onnx or .zip) or a voice's .index");
+        if (size < 0 || size > (ext == ".index" ? 8L << 30 : 4L << 30)) return (false, $"{name}: unexpected size");
         try
         {
             Directory.CreateDirectory(Dir);
@@ -382,6 +514,15 @@ public static class VoiceLibrary
         if (!File.Exists(tmp)) return (false, $"{name}: nothing was received");
         try
         {
+            // An index is not a voice: it stays as received, for the caller
+            // to attach (AttachIndex with ImportingPath) to the voice it goes with.
+            if (name.EndsWith(".index", StringComparison.OrdinalIgnoreCase))
+            {
+                var check = FeatureIndex.Check(tmp);
+                if (!check.Ok) { AbortImport(name); return (false, check.Message); }
+                added = name;
+                return (true, check.Message);
+            }
             if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
             {
                 var r = ImportZip(tmp, out var fromZip);
@@ -409,6 +550,10 @@ public static class VoiceLibrary
         {
             var path = PathFor(id);
             if (File.Exists(path)) File.Delete(path);
+            // The index goes when no file of the voice is left.
+            var stem = Path.GetFileNameWithoutExtension(id);
+            if (!File.Exists(Path.Combine(Dir, stem + ".pth")) && !File.Exists(Path.Combine(Dir, stem + ".onnx")))
+                RemoveIndex(id);
             return true;
         }
         catch (Exception ex) { ErrorLog.WriteEntry("VoiceLibrary.Delete", ex); return false; }
@@ -471,6 +616,59 @@ public static class VoiceLibrary
     }
 
     // ── in-app conversion ────────────────────────────────────────────
+    // Recorded in every in-app conversion. 1 (absent): made before 1.0.5,
+    // when the generic templates still carried the small tensors (every
+    // bias, 131 in all) of RVC's pretrained generator instead of reading
+    // them from the voice: the voice ran with its own large weights and the
+    // pretrained biases, which roughens it and makes it breathy. 2: every
+    // tensor from the voice. Older conversions are rebuilt from their .pth.
+    public const int AssemblyGeneration = 2;
+
+    // In-app conversions made before the fix whose checkpoint is still in
+    // the library (and so can be rebuilt), and those whose checkpoint is gone.
+    public static (List<string> Rebuildable, List<string> Orphaned) StaleConversions()
+    {
+        var rebuild = new List<string>();
+        var orphaned = new List<string>();
+        try
+        {
+            if (!Directory.Exists(Dir)) return (rebuild, orphaned);
+            foreach (var file in Directory.EnumerateFiles(Dir, "*.onnx"))
+            {
+                if (!IsStaleConversion(file)) continue;
+                var pth = Path.Combine(Dir, Path.GetFileNameWithoutExtension(file) + ".pth");
+                (File.Exists(pth) ? rebuild : orphaned).Add(Path.GetFileName(file));
+            }
+        }
+        catch (Exception ex) { ErrorLog.WriteEntry("VoiceLibrary.StaleConversions", ex); }
+        return (rebuild, orphaned);
+    }
+
+    internal static bool IsStaleConversion(string onnxPath)
+    {
+        var json = VoiceModel.ReadMorphonicJson(onnxPath);
+        if (json.Length == 0) return false;
+        try
+        {
+            var j = Newtonsoft.Json.Linq.JObject.Parse(json);
+            return j["exporter"]?.ToString() == "in-app" && (j["assembly"]?.ToObject<int?>() ?? 1) < AssemblyGeneration;
+        }
+        catch { return false; }
+    }
+
+    // Rebuilds one stale conversion in place from its .pth (the file is
+    // replaced only once the new one is complete).
+    public static (bool Ok, string Message) Rebuild(string onnxId)
+    {
+        var dest = PathFor(onnxId);
+        var pth = Path.Combine(Dir, Path.GetFileNameWithoutExtension(onnxId) + ".pth");
+        if (!File.Exists(pth)) return (false, $"{onnxId}: its .pth is no longer in the library");
+        var name = VoiceModel.ReadMetadata(dest).Name;
+        if (name.Length == 0) name = Path.GetFileNameWithoutExtension(onnxId);
+        var (ok, message, _) = ConvertNative(pth, dest, name);
+        return (ok, ok ? $"{onnxId} rebuilt" : message);
+    }
+
     // A standard RVC v2 voice becomes ONNX right here, in seconds: its
     // tensors are placed into the embedded graph for its sample rate
     // (Assets/rvc-v2-*.template, the mechanism that builds the sample
@@ -533,6 +731,7 @@ public static class VoiceLibrary
             {
                 format = "morphonic-rvc-voice", formatVersion = 1, rvcVersion = "v2", sr, hop = sr / 100, f0 = true,
                 embChannels = 768, speakers, skipHead = true, name, source = Path.GetFileName(source), exporter = "in-app",
+                assembly = AssemblyGeneration,
             });
             var tmp = dest + ".converting";
             try
